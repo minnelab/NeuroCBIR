@@ -9,6 +9,9 @@ from torch.utils.data import Sampler
 import random
 import torchio as tio  # TorchIO is a popular library for 3D medical image augmentation
 import warnings
+from tqdm import tqdm
+import json
+
 
 def list_files_with_extension(directory, extension):
     """
@@ -78,7 +81,7 @@ def get_label(image_id, labels_df, column='disease_label'):
         return np.nan
     
 class BrainMRIDataset(Dataset):
-    def __init__(self, image_paths, ages, labels, pe=False, transform=None, transform_age=None):
+    def __init__(self, image_paths, ages, labels, transform=None, transform_age=None, cache=False, sparse_path=None, return_seg=False):
         """
         Parameters:
             image_paths (list or np.array): Paths to the MRI image files.
@@ -93,13 +96,11 @@ class BrainMRIDataset(Dataset):
         self.image_paths = np.array(image_paths)
         self.ages = np.array(ages)
         self.labels = np.array(labels)
-        self.pe = pe
         self.transform = transform
         self.transform_age = transform_age
-
-        if pe:
-            # Example positional encoding; ensure that its dimensions match your image size.
-            self.pos_en = positionalencoding2d(4, 128, 128).detach().cpu().numpy()
+        self.cache = cache
+        self.sparse_path=sparse_path
+        self.return_seg=return_seg
             
         if transform == "default":
             augmentation_transforms = tio.Compose([
@@ -113,20 +114,86 @@ class BrainMRIDataset(Dataset):
                                                     # tio.RandomBiasField(coefficients=0.5) # Simulate intensity inhomogeneities !too slow
                                                 ])
             self.transform = augmentation_transforms
-            
+
+        # Preload images if cache is enabled
+        if self.cache:
+            self.cached_img = np.ones((len(self.image_paths), 176, 208, 160), dtype=np.uint8)
+            self.cached_seg = np.ones((len(self.image_paths), 176, 208, 160), dtype=np.uint8)
+
+            for i, path in enumerate(self.image_paths):
+                print(f"Loading {i+1}/{len(self.image_paths)} {(i+1)/len(self.image_paths)*100:.1f}% ...", end='\r')
+                img_seg = np.load(path, allow_pickle=True).item()
+                
+                image = img_seg['image']
+                seg = img_seg['seg']
+
+                assert image.shape == (176, 208, 160), f"Unexpected shape: {image.shape}"
+                assert seg.shape == (176, 208, 160), f"Unexpected shape: {seg.shape}"
+
+                self.cached_img[i] = image.copy()
+                self.cached_seg[i] = seg.copy()
+
+            print()
+
+        elif self.sparse_path:
+            with open(self.sparse_path, 'r') as f:
+                self.common_bb = json.load(f)
+            self.common_dim = np.array(self.common_bb['Hippocampus (lh)'][1]) - np.array(self.common_bb['Hippocampus (lh)'][0])
+            self.dementia_subcortical_indices = {
+                "Hippocampus (lh)": 17,
+                "Hippocampus (rh)": 53,
+                "Amygdala (lh)": 18,
+                "Amygdala (rh)": 54,
+                "Thalamus (lh)": 10,
+                "Thalamus (rh)": 49,
+                "Caudate (lh)": 11,
+                "Caudate (rh)": 50,
+                "Putamen (lh)": 12,
+                "Putamen (rh)": 51,
+            }
+
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        # Load the 3D MRI image from disk
-        in_im = np.load(self.image_paths[idx])
+        # Use cached image or load from disk
+        if self.cache:
+            in_im = self.cached_img[idx]
+            in_im = in_im.astype(np.float32) / 255.0
+            seg = self.cached_seg[idx]
+            
+        elif self.sparse_path:
+            img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
+            img = img_seg['image']
+            seg = img_seg['seg']
+
+            in_im = []
+            for key, value in self.dementia_subcortical_indices.items():
+                if key in self.common_bb and self.common_bb[key] is not None:
+                    x0, x1 = self.common_bb[key][0][0], self.common_bb[key][1][0]
+                    y0, y1 = self.common_bb[key][0][1], self.common_bb[key][1][1]
+                    z0, z1 = self.common_bb[key][0][2], self.common_bb[key][1][2]
+
+                    # Create a mask for the current subcortical region
+                    region_mask = (seg == value)
+
+                    # Apply BB and then mask (if you only want the region within the BB)
+                    cropped_region = img[x0:x1, y0:y1, z0:z1]
+                    cropped_mask = region_mask[x0:x1, y0:y1, z0:z1]
+                    in_im.append(cropped_region * cropped_mask) # Element-wise multiplication
+            in_im = np.array(in_im)
+            in_im = in_im.astype(np.float32) / 255.0
+
+        else:
+            img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
+            in_im = img_seg['image']
+            in_im = in_im.astype(np.float32) / 255.0
+            seg = img_seg['seg']
+
+
         out_im = in_im.copy()
         # in_im = np.array(nib.load(self.image_paths[idx]).get_fdata(), dtype=np.float32)
-        
-        # Optionally add positional encoding as additional channels
-        if self.pe:
-            image = np.concatenate([image, self.pos_en], axis=0)
         
         # Apply data augmentation if a transform is provided
         if self.transform:
@@ -145,8 +212,13 @@ class BrainMRIDataset(Dataset):
 
         # Convert image, age, and label to tensors.
         # Note: The image is converted again if no transform was applied.
-        in_im = torch.tensor(in_im, dtype=torch.float32).unsqueeze(0)  # Ensure a channel dimension
-        out_im = torch.tensor(out_im, dtype=torch.float32).unsqueeze(0)  # Ensure a channel dimension
+        in_im = torch.tensor(in_im, dtype=torch.float32)  # Ensure a channel dimension
+        seg = torch.tensor(seg, dtype=torch.float32)  # Ensure a channel dimension
+        out_im = torch.tensor(out_im, dtype=torch.float32)  # Ensure a channel dimension
+        if len(in_im.shape) < 4:
+            in_im = in_im.unsqueeze(0)
+            seg = seg.unsqueeze(0)
+            out_im = out_im.unsqueeze(0)
 
         # Load and possibly augment age
         age = self.ages[idx]
@@ -159,12 +231,22 @@ class BrainMRIDataset(Dataset):
         age = torch.tensor(age, dtype=torch.float32).unsqueeze(0)
         label = torch.tensor(label, dtype=torch.float32).unsqueeze(0)
 
-        sample = {
-            'input': out_im,
-            'output': in_im,
-            'age': age,
-            'label': label
-        }
+
+        if self.return_seg:
+            sample = {
+                'input': out_im,
+                'output': in_im,
+                'age': age,
+                'seg': seg,
+                'label': label
+            }
+        else:
+            sample = {
+                'input': out_im,
+                'output': in_im,
+                'age': age,
+                'label': label
+            }
         return sample
     
     
