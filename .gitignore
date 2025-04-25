@@ -9,6 +9,9 @@ __pycache__/
 .vscode
 .pytest_cache
 
+reports/
+reports/logs/
+
 data/
 data/pretrained_models/
 *.pth
