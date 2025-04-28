@@ -69,7 +69,7 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, max_epo
         
         # Log report
         if report is not None:
-            report.log_epoch(epoch + 1, loss, val_loss=avg_val_loss, note=note)
+            report.log_epoch(epoch + 1, avg_train_loss, val_loss=avg_val_loss, note=note)
 
         # Back up model
         torch.save(model.state_dict(), f"./data/pretrained_models/CP_{report.timestamp}.pth")
