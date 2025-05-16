@@ -1,16 +1,17 @@
 import os
 from datetime import datetime
 from torchsummary import summary
+import torch
 
 class TrainingReport:
-    def __init__(self, model, input_shape, dataset_info, optimizer=None, lr=None, weight_decay=None, report_dir="training_reports"):
+    def __init__(self, model, input_shape, dataset_info, optimizer=None, lr=None, weight_decay=None, scheduler=None, report_dir="training_reports"):
         os.makedirs(report_dir, exist_ok=True)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.file_path = os.path.join(report_dir, f"train_report_{self.timestamp}.txt")
         
-        self.write_header(model, input_shape, dataset_info, optimizer, lr, weight_decay)
+        self.write_header(model, input_shape, dataset_info, optimizer, lr, weight_decay, scheduler)
 
-    def write_header(self, model, input_shape, dataset_info, optimizer, lr, weight_decay):
+    def write_header(self, model, input_shape, dataset_info, optimizer, lr, weight_decay, scheduler):
         with open(self.file_path, 'w') as f:
             f.write(f"Training Report\n")
             f.write(f"Timestamp: {datetime.now()}\n\n")
@@ -34,6 +35,16 @@ class TrainingReport:
                 f.write(f"  - Learning rate: {lr}\n")
             if weight_decay is not None:
                 f.write(f"  - Weight decay: {weight_decay}\n")
+            if scheduler is not None:
+                f.write(f"  - Scheduler: {scheduler.__class__.__name__}\n")
+                if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    f.write(f"    • Mode: {scheduler.mode}\n")
+                    f.write(f"    • Factor: {scheduler.factor}\n")
+                    f.write(f"    • Patience: {scheduler.patience}\n")
+                    f.write(f"    • Threshold: {scheduler.threshold}\n")
+                    f.write(f"    • Cooldown: {scheduler.cooldown}\n")
+                    f.write(f"    • Min LR: {scheduler.min_lrs}\n")
+
             f.write("\nEpoch Log:\n")
             f.write("Epoch | Train Loss | Val Loss | Val Acc | Notes\n")
             f.write("------|------------|----------|---------|------\n")

@@ -1,60 +1,47 @@
 from sklearn.model_selection import StratifiedGroupKFold
 import numpy as np
 
-def stratified_patient_split(image_paths, labels, ages, ids, test_size=0.15, val_size=0.15, random_state=42):
+def stratified_patient_split(test_size=0.15, val_size=0.15, random_state=42, label_key="labels", group_key="ids", **data_dict):
     """
-    Splits the dataset into training, validation, and test sets while ensuring:
-    - Stratification based on labels (each partition maintains label distribution).
-    - Grouping by patient IDs (each patient appears in only one set).
+    Splits dataset into train/val/test sets with stratification and patient grouping.
 
     Parameters:
-    - image_paths: np.array of image file paths.
-    - labels: np.array of labels (0 or 1).
-    - ages: np.array of ages.
-    - ids: np.array of patient IDs.
-    - test_size: Proportion of data assigned to the test set.
-    - val_size: Proportion of remaining data assigned to the validation set.
+    - test_size: Proportion of data for test split.
+    - val_size: Proportion of train+val split for validation.
     - random_state: Seed for reproducibility.
+    - label_key: Key in data_dict used for stratification.
+    - group_key: Key in data_dict used for grouping patients.
+    - **data_dict: Arbitrary number of named arrays/lists of equal length.
 
     Returns:
-    - train, val, test partitions as dictionaries containing image_paths, labels, ages, and ids.
+    - train_set, val_set, test_set: dictionaries with the same keys as input.
     """
-    image_paths, labels, ages, ids = map(np.array, [image_paths, labels, ages, ids])
+    # Convert all to NumPy arrays and check lengths
+    data_dict = {k: np.array(v) for k, v in data_dict.items()}
+    lengths = [len(v) for v in data_dict.values()]
+    assert len(set(lengths)) == 1, "All input arrays must be the same length."
 
-    # Step 1: First split -> Training+Validation (1 - test_size) and Test (test_size)
+    labels = data_dict[label_key]
+    groups = data_dict[group_key]
+
     sgkf = StratifiedGroupKFold(n_splits=int(1/test_size), shuffle=True, random_state=random_state)
-    train_val_idx, test_idx = next(sgkf.split(image_paths, labels, groups=ids))
+    train_val_idx, test_idx = next(sgkf.split(labels, labels, groups=groups))
 
-    # Extract test set
-    test_set = {
-        "image_paths": image_paths[test_idx],
-        "labels": labels[test_idx],
-        "ages": ages[test_idx],
-        "ids": ids[test_idx]
-    }
+    def subset(indices):
+        return {k: v[indices] for k, v in data_dict.items()}
 
-    # Step 2: Second split -> Training (1 - val_size) and Validation (val_size) from Train+Validation set
-    train_val_image_paths = image_paths[train_val_idx]
-    train_val_labels = labels[train_val_idx]
-    train_val_ages = ages[train_val_idx]
-    train_val_ids = ids[train_val_idx]
+    test_set = subset(test_idx)
+    train_val_set = subset(train_val_idx)
+
+    # Second split: train and val
+    train_val_labels = train_val_set[label_key]
+    train_val_groups = train_val_set[group_key]
 
     sgkf = StratifiedGroupKFold(n_splits=int(1/val_size), shuffle=True, random_state=random_state)
-    train_idx_rel, val_idx_rel = next(sgkf.split(train_val_image_paths, train_val_labels, groups=train_val_ids))
+    train_idx_rel, val_idx_rel = next(sgkf.split(train_val_labels, train_val_labels, groups=train_val_groups))
 
-    # Extract training and validation sets
-    train_set = {
-        "image_paths": train_val_image_paths[train_idx_rel],
-        "labels": train_val_labels[train_idx_rel],
-        "ages": train_val_ages[train_idx_rel],
-        "ids": train_val_ids[train_idx_rel]
-    }
-
-    val_set = {
-        "image_paths": train_val_image_paths[val_idx_rel],
-        "labels": train_val_labels[val_idx_rel],
-        "ages": train_val_ages[val_idx_rel],
-        "ids": train_val_ids[val_idx_rel]
-    }
+    # Use relative indices to index into train_val_set
+    train_set = subset(train_val_idx[train_idx_rel])
+    val_set = subset(train_val_idx[val_idx_rel])
 
     return train_set, val_set, test_set

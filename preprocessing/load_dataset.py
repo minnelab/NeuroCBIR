@@ -249,6 +249,35 @@ class BrainMRIDataset(Dataset):
             }
         return sample
     
+
+class BrainSVFDataset(Dataset):
+    def __init__(self, svf_paths, ages_dif, labels):
+        """
+        Parameters:
+            image_paths (list or np.array): Paths to the MRI image files.
+            ages (list or np.array): Corresponding ages.
+            labels (list or np.array): Labels (0 or 1) for each sample.
+        """
+        self.svf_paths = np.array(svf_paths)
+        self.ages_dif = np.array(ages_dif)
+        self.labels = np.array(labels)
+
+    def __len__(self):
+        return len(self.svf_paths)
+
+    def __getitem__(self, idx):
+
+        svf = np.load(self.svf_paths[idx])
+        svf = torch.tensor(svf, dtype=torch.float32).permute((-1, 1, 2, 0))
+
+        age_dif = torch.tensor(self.ages_dif[idx], dtype=torch.float32).unsqueeze(0)
+        label = torch.tensor(self.labels[idx], dtype=torch.float32).unsqueeze(0)
+
+        return {'svf': svf,
+                'age_dif': age_dif,
+                'label': label}
+    
+    
     
 class StratifiedBatchSampler(Sampler):
     def __init__(self, dataset, batch_size):

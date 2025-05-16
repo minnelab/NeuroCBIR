@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
 
-def train(model, train_loader, val_loader, optimizer, criterion, device, max_epochs=1000, patience=15, report=None):
+def train(model, train_loader, val_loader, optimizer, criterion, device, max_epochs=5000, patience=15, es_warmup=150, report=None, scheduler=None):
     best_val_loss = float('inf')
     best_model_state = None
     no_improve_epochs = 0
@@ -53,19 +53,26 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, max_epo
         avg_val_loss = total_val_loss / len(val_loader)
         val_losses.append(avg_val_loss)
 
-        print(f"[Epoch {epoch+1}] Train Loss: {avg_train_loss:.6f} | Val Loss: {avg_val_loss:.6f}")
+        # --- Scheduler step ---
+        if scheduler is not None:
+            scheduler.step(avg_val_loss)
+
+        lr = optimizer.param_groups[0]['lr']
+
+        print(f"[Epoch {epoch+1}] Train Loss: {avg_train_loss:.6f} — Val Loss: {avg_val_loss:.6f} — lr = {lr:.2e}")
 
         # --- Early Stopping ---
-        if avg_val_loss < best_val_loss:
-            note += "ES"
-            best_val_loss = avg_val_loss
-            best_model_state = model.state_dict()
-            no_improve_epochs = 0
-        else:
-            no_improve_epochs += 1
-            if no_improve_epochs >= patience:
-                print(f"⏹️ Early stopping triggered at epoch {epoch+1}")
-                break
+        if es_warmup < epoch:
+            if avg_val_loss < best_val_loss:
+                note += "ES"
+                best_val_loss = avg_val_loss
+                best_model_state = model.state_dict()
+                no_improve_epochs = 0
+            else:
+                no_improve_epochs += 1
+                if no_improve_epochs >= patience:
+                    print(f"⏹️ Early stopping triggered at epoch {epoch+1}")
+                    break
         
         # Log report
         if report is not None:
