@@ -15,9 +15,17 @@ def calculate_metrics(hits_at_k: int, hits_at_least_one: int, total_queries: int
         'num_evaluated': total_queries
     }
 
-def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3) -> tuple:
+def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
     """
-    Computes precision@k and success@k using cosine similarity.
+    Computes precision@k and success@k using cosine similarity, but evaluating retrieval based on class match instead of subject_id.
+    
+    Args:
+        dataset (pd.DataFrame): DataFrame with 'features' and class column (e.g., 'class_label').
+        top_k (int): Number of top matches to consider.
+        class_column (str): Name of the column representing the class.
+
+    Returns:
+        dict: Metrics (precision@k, success@k, number of evaluated queries).
     """
     hits_at_k = 0
     hits_at_least_one = 0
@@ -28,22 +36,22 @@ def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3) -> tupl
 
     for i in range(len(dataset)):
         query = dataset.iloc[i]
-        subject_id = query['subject_id']
+        query_class = query[class_column]
         features = query['features'].reshape(1, -1)
 
-        # Check if there are enough records for that subject
-        subject_records = dataset[dataset['subject_id'] == subject_id]
-        if len(subject_records) < top_k:
-            continue  # Skip if not enough records
+        # Check if there are enough records of this class
+        class_records = dataset[dataset[class_column] == query_class]
+        if len(class_records) < top_k:
+            continue  # Skip if not enough records of this class
 
         similarities = cosine_similarity(features, features_matrix)[0]
         similarities[i] = -1  # Exclude self
 
         top_k_indices = np.argsort(similarities)[::-1][:top_k]
-        top_k_subjects = dataset.iloc[top_k_indices]['subject_id'].values
+        top_k_classes = dataset.iloc[top_k_indices][class_column].values
 
         # Evaluation
-        hits = np.sum(top_k_subjects == subject_id)
+        hits = np.sum(top_k_classes == query_class)
         if hits > 0:
             hits_at_least_one += 1
         hits_at_k += hits
