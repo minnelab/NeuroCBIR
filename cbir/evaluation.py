@@ -15,7 +15,7 @@ def calculate_metrics(hits_at_k: int, hits_at_least_one: int, total_queries: int
         'num_evaluated': total_queries
     }
 
-def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
+def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label', evaluation_function=None) -> dict:
     """
     Computes precision@k and success@k using cosine similarity, but evaluating retrieval based on class match instead of subject_id.
     
@@ -27,6 +27,9 @@ def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_c
     Returns:
         dict: Metrics (precision@k, success@k, number of evaluated queries).
     """
+    if evaluation_function is None:
+        evaluation_function = evaluation_function_classification
+
     hits_at_k = 0
     hits_at_least_one = 0
     total_queries = 0
@@ -41,7 +44,7 @@ def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_c
 
         # Check if there are enough records of this class
         class_records = dataset[dataset[class_column] == query_class]
-        if len(class_records) < top_k:
+        if len(class_records)-1 < top_k:
             continue  # Skip if not enough records of this class
 
         similarities = cosine_similarity(features, features_matrix)[0]
@@ -51,7 +54,7 @@ def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_c
         top_k_classes = dataset.iloc[top_k_indices][class_column].values
 
         # Evaluation
-        hits = np.sum(top_k_classes == query_class)
+        hits = evaluation_function(query_class, top_k_classes)
         if hits > 0:
             hits_at_least_one += 1
         hits_at_k += hits
@@ -60,3 +63,11 @@ def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_c
         total_retrieved += top_k
 
     return calculate_metrics(hits_at_k, hits_at_least_one, total_queries, total_retrieved)
+
+def evaluation_function_classification(query_class, top_k_classes):
+    hits = np.sum(top_k_classes == query_class)
+    return hits
+
+def evaluation_function_regression(query_class, top_k_classes):
+    hits = np.sum(top_k_classes <= query_class)
+    return hits

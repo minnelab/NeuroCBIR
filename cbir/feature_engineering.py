@@ -13,6 +13,6 @@ def prepare_dataset_with_combined_features(dataset: pd.DataFrame, subc_strs: lis
     list_features_to_concat = []
     for subc_str in subc_strs:
         list_features_to_concat.append(np.stack(dataset.copy()[dataset['subc_str'].isin([subc_str])].features.values))
-    dataset_subc_str.features = list(np.concat(list_features_to_concat, axis=1))
+    dataset_subc_str.features = list(np.concatenate(list_features_to_concat, axis=1))
 
     return dataset_subc_str
