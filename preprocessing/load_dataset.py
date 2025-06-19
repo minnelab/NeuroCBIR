@@ -11,7 +11,7 @@ import torchio as tio  # TorchIO is a popular library for 3D medical image augme
 import warnings
 from tqdm import tqdm
 import json
-
+from preprocessing.padding import pad_mri_to_shape
 
 def list_files_with_extension(directory, extension):
     """
@@ -276,6 +276,82 @@ class BrainSVFDataset(Dataset):
         return {'svf': svf,
                 'age_dif': age_dif,
                 'label': label}
+    
+
+class SubcorticalSVFDataset(Dataset):
+    def __init__(self, svf_paths, ages_dif, labels, mri_svf_sessions, sparse_path):
+        """
+        Parameters:
+            image_paths (list or np.array): Paths to the MRI image files.
+            ages (list or np.array): Corresponding ages.
+            labels (list or np.array): Labels (0 or 1) for each sample.
+        """
+        self.svf_paths = np.array(svf_paths)
+        self.ages_dif = np.array(ages_dif)
+        self.labels = np.array(labels)
+        self.sparse_path = sparse_path
+        self.mri_svf_sessions = mri_svf_sessions
+
+        with open(self.sparse_path, 'r') as f:
+            self.common_bb = json.load(f)
+        self.common_dim = np.array(self.common_bb['Hippocampus (lh)'][1]) - np.array(self.common_bb['Hippocampus (lh)'][0])
+        self.dementia_subcortical_indices = {
+            "Hippocampus (lh)": 17,
+            "Hippocampus (rh)": 53,
+            "Amygdala (lh)": 18,
+            "Amygdala (rh)": 54,
+            "Thalamus (lh)": 10,
+            "Thalamus (rh)": 49,
+            "Caudate (lh)": 11,
+            "Caudate (rh)": 50,
+            "Putamen (lh)": 12,
+            "Putamen (rh)": 51,
+        }
+
+    def __len__(self):
+        return len(self.svf_paths)
+
+    def __getitem__(self, idx):
+
+        whole_svf = np.load(self.svf_paths[idx])
+        # whole_svf = torch.tensor(whole_svf, dtype=torch.float32).permute((-1, 1, 2, 0))
+
+        seg_1 = pad_mri_to_shape(np.load(self.mri_svf_sessions[idx,0], allow_pickle=True).item()['seg'], target_shape=(96*2, 112*2, 80*2))[::2, ::2, ::2]
+        seg_2 = pad_mri_to_shape(np.load(self.mri_svf_sessions[idx,1], allow_pickle=True).item()['seg'], target_shape=(96*2, 112*2, 80*2))[::2, ::2, ::2]
+
+        #############
+        # img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
+        # img = img_seg['image']
+        # seg = img_seg['seg']
+
+        svf = []
+        for key, value in self.dementia_subcortical_indices.items():
+            if key in self.common_bb and self.common_bb[key] is not None:
+                x0, x1 = self.common_bb[key][0][0]//2, self.common_bb[key][1][0]//2
+                y0, y1 = self.common_bb[key][0][1]//2, self.common_bb[key][1][1]//2
+                z0, z1 = self.common_bb[key][0][2]//2, self.common_bb[key][1][2]//2
+
+                # Create a mask for the current subcortical region
+                region_mask = (seg_1 == value) + (seg_2 == value)
+
+                # Apply BB and then mask (if you only want the region within the BB)
+                cropped_region = whole_svf[x0:x1, y0:y1, z0:z1]
+                cropped_mask = region_mask[x0:x1, y0:y1, z0:z1]
+                svf.append(cropped_region * cropped_mask[..., np.newaxis]) # Element-wise multiplication
+                
+        svf = np.array(svf)
+        #############
+
+        svf = torch.tensor(svf, dtype=torch.float32).permute((0, -1, 2, 3, 1))
+
+
+        age_dif = torch.tensor(self.ages_dif[idx], dtype=torch.float32).unsqueeze(0)
+        label = torch.tensor(self.labels[idx], dtype=torch.float32).unsqueeze(0)
+
+        return {'svf': svf,
+                'age_dif': age_dif,
+                'label': label}
+    
     
     
     

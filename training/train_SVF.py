@@ -17,10 +17,10 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, max_epo
             images_input = batch['svf'].to(device, dtype=torch.float32)
             images_gt = batch['svf'].to(device, dtype=torch.float32)
 
-            if len(images_gt.shape) > 4:
+            if len(images_gt.shape) > 5:
                 batch_size, num_regions, *rest = images_input.shape
-                images_input = images_input.reshape(batch_size * num_regions, *rest).unsqueeze(1)
-                images_gt = images_gt.reshape(batch_size * num_regions, *rest).unsqueeze(1)
+                images_input = images_input.reshape(batch_size * num_regions, *rest)
+                images_gt = images_gt.reshape(batch_size * num_regions, *rest)
 
             _, images_out = model(images_input)
             loss = criterion(images_out, images_gt)
@@ -41,10 +41,10 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, max_epo
                 images_input = batch['svf'].to(device, dtype=torch.float32)
                 images_gt = batch['svf'].to(device, dtype=torch.float32)
 
-                if len(images_gt.shape) > 4:
+                if len(images_gt.shape) > 5:
                     batch_size, num_regions, *rest = images_input.shape
-                    images_input = images_input.reshape(batch_size * num_regions, *rest).unsqueeze(1)
-                    images_gt = images_gt.reshape(batch_size * num_regions, *rest).unsqueeze(1)
+                    images_input = images_input.reshape(batch_size * num_regions, *rest)
+                    images_gt = images_gt.reshape(batch_size * num_regions, *rest)
 
                 _, images_out = model(images_input)
                 loss = criterion(images_out, images_gt)
