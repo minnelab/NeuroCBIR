@@ -11,7 +11,7 @@ def create_lookup_table(root_dirs, output_csv="dataset_index.csv"):
                 ids = data["ids"]
                 for i, sample_id in enumerate(ids):
                     rows.append({
-                        "id": sample_id,
+                        "GUID": sample_id,
                         "dataset": dataset_name,
                         "batch_file": str(batch_file.resolve()),
                         "index_in_batch": i,
