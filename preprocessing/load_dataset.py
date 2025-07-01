@@ -12,6 +12,7 @@ import warnings
 from tqdm import tqdm
 import json
 from preprocessing.padding import pad_mri_to_shape
+from collections import defaultdict
 
 def list_files_with_extension(directory, extension):
     """
@@ -404,3 +405,87 @@ class ToTensor:
         # mask = np.expand_dims(mask, axis=0)    # Add channel dimension
         return {'image': torch.from_numpy(image).float(),
                 'mask': torch.from_numpy(mask).float()}
+
+
+##############################################
+##### Batched data loader
+##############################################
+
+class LookupNPZDataset(Dataset):
+    def __init__(self, metadata, batch_file, use_segmentation=True):
+        self.metadata = metadata[metadata["batch_file"] == batch_file].reset_index(drop=True)
+        self.use_segmentation = use_segmentation
+        self.batch_file = batch_file
+
+        # Load data for this batch
+        npz_data = np.load(self.batch_file)
+
+        self.images = np.array(npz_data["images"])
+        self.ids = np.array(npz_data["ids"])
+
+        if self.use_segmentation and "segmentations" in npz_data:
+            self.segmentations = np.array(npz_data["segmentations"])
+        else:
+            self.segmentations = None
+
+        npz_data.close()
+
+    def __len__(self):
+        return len(self.metadata)
+
+    def __getitem__(self, idx):
+        row = self.metadata.iloc[idx]
+        index_in_batch = row["index_in_batch"]
+        sample_id = row["GUID"]
+        image = self.images[index_in_batch].copy().astype(float) / 255.0
+
+        sample = {
+            "id": sample_id,
+            "image": torch.from_numpy(image)
+        }
+
+        if self.use_segmentation and self.segmentations is not None:
+            seg = self.segmentations[index_in_batch]
+            sample["seg"] = torch.from_numpy(seg)
+
+        return sample
+
+def get_balanced_batch(dataset, group_size=4, groups_per_batch=3, device="cuda"):
+    """
+    Return a batch of {'feats': ..., 'labels': ...} for MultiPosConLoss.
+    """
+    subject_to_indices = defaultdict(list)
+
+    for idx in range(len(dataset)):
+        subject = dataset.metadata.iloc[idx]["subject"]
+        subject_to_indices[subject].append(idx)
+
+    # Pick patients with enough samples
+    eligible_subjects = [s for s, idxs in subject_to_indices.items() if len(idxs) >= group_size]
+    random.shuffle(eligible_subjects)
+
+    batch_indices = []
+    label_lookup = {}  # subject_id → class label
+    label_counter = 0
+
+    for subject in eligible_subjects[:groups_per_batch]:
+        selected = random.sample(subject_to_indices[subject], group_size)
+        batch_indices.extend(selected)
+        label_lookup[subject] = label_counter
+        label_counter += 1
+
+    # Load and encode batch
+    images = []
+    labels = []
+
+    for idx in batch_indices:
+        sample = dataset[idx]
+        image = sample["image"].float().unsqueeze(0).unsqueeze(0).to(device)  # shape: [1, C, D, H, W] or [1, D, H, W]
+        subject = dataset.metadata.iloc[idx]["subject"]
+        images.append(image)
+        labels.append(label_lookup[subject])
+
+    image_tensor = torch.cat(images, dim=0)  # shape: [B, ...]
+    label_tensor = torch.tensor(labels, dtype=torch.long, device=device)
+
+    return {'feats': image_tensor, 'labels': label_tensor}
