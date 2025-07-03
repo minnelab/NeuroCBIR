@@ -1,2 +1,2 @@
 from .gradacc import GradientAccumulation
-from .losses import KLDivergenceLoss, WeightedMSELoss
+from .losses import KLDivergenceLoss, WeightedMSELoss, MultiPosConLoss

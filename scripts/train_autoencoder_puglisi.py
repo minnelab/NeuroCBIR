@@ -22,8 +22,8 @@ from torch.utils.tensorboard import SummaryWriter
 import random
 from preprocessing import LookupNPZDataset, get_balanced_batch
 import matplotlib.pyplot as plt
+import warnings
 
-import matplotlib.pyplot as plt
 
 def plot_mri_comparison(gt_tensor, recon_tensor, title="MRI Comparison"):
     """
@@ -73,7 +73,9 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 # DEVICE = 'cpu'
 RUN_GUID = datetime.now().strftime("%Y%m%d_%H%M%S")
 DATA_PATH = "/mimer/NOBACKUP/groups/biomedicalimaging-kth/felixnie/"
-RESUME_PATH = "/path/to/checkpoint-epoch-X.pth" # Fill in for resuming training
+# RESUME_PATH = "/cephyr/users/felixnie/Alvis/logs/20250701_125311/checkpoint-epoch-1.pth" # Fill in for resuming training
+RESUME_PATH=""
+LOGGING_PATH = os.path.join("/cephyr/users/felixnie/Alvis/", "logs", RUN_GUID) # Logging path preparation
 
 if __name__ == '__main__':
 
@@ -83,13 +85,12 @@ if __name__ == '__main__':
     # Files to load/save extension
     extension = ".npz"
     # Pretrained weights for the VAE
-    ckpt_vae_path = "./data/pretrained_models/autoencoder_puglisi.pth"
+    ckpt_vae_path = ""#"./data/pretrained_models/autoencoder_puglisi.pth"
     # Pretrained weights for the Discriminator
-    ckpt_dis_path = "./data/pretrained_models/ckpt_dis_.pth"
+    ckpt_dis_path = ""#"./data/pretrained_models/ckpt_dis_.pth"
     # Preparing image for using as input of the VAE
     target_shape = [1, 160, 224, 160] # Desired shape: [1, 160, 224, 160]
-    # Logging path preparation
-    logging_path = os.path.join(DATA_PATH, "logs", RUN_GUID) 
+    
 
 
     # Load metadata
@@ -116,14 +117,14 @@ if __name__ == '__main__':
     batch_size = 8
     n_batches_per_file = 800
     lr = 1e-4
-    adv_weight          = 0.025
-    perceptual_weight   = 0.001
-    kl_weight           = 1e-7
+    adv_weight= 0.1
+    perceptual_weight = 0.1
+    kl_weight = 1e-7
 
     autoencoder = AutoencoderKL(spatial_dims=3,
                                 in_channels=1,
                                 out_channels=1,
-                                latent_channels=3,
+                                latent_channels=8,
                                 channels=(64, 128, 128, 128),
                                 num_res_blocks=2,
                                 norm_num_groups=32,
@@ -141,7 +142,7 @@ if __name__ == '__main__':
     else:
         print("VAE weights are not available!")
 
-    discriminator = PatchDiscriminator(spatial_dims=3, num_layers_d=3, channels=32, in_channels=1, out_channels=1)
+    discriminator = PatchDiscriminator(spatial_dims=3, num_layers_d=3, channels=32, in_channels=1, out_channels=1, norm="INSTANCE")
     discriminator.to(DEVICE)
 
     # Load pretrained model VAE
@@ -155,8 +156,13 @@ if __name__ == '__main__':
     l1_loss_fn = L1Loss()
     kl_loss_fn = KLDivergenceLoss()
 
+    # Prepare losses
     adv_loss = PatchAdversarialLoss(criterion="least_squares")
-    loss_perceptual = PerceptualLoss(spatial_dims=3, network_type="squeeze", is_fake_3d=True, fake_3d_ratio=0.2)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="torchvision")
+        loss_perceptual = PerceptualLoss(spatial_dims=3, network_type="squeeze", is_fake_3d=True, fake_3d_ratio=0.2)
+
     loss_perceptual.to(DEVICE)
     
     optimizer_g = torch.optim.Adam(autoencoder.parameters(), lr=lr)
@@ -176,7 +182,6 @@ if __name__ == '__main__':
                                      grad_scaler=GradScaler())
 
     avgloss = AverageLoss()
-    writer = SummaryWriter(log_dir=logging_path)
 
     # Training configuration
     batch_files = sorted(metadata["batch_file"].unique())
@@ -200,6 +205,9 @@ if __name__ == '__main__':
 
     for epoch in range(start_epoch, num_epochs):
         # random.shuffle(batch_files)
+
+        # New logging file
+        writer = SummaryWriter(log_dir=LOGGING_PATH)
 
         for batch_file in batch_files:
             dataset = LookupNPZDataset(metadata, batch_file=batch_file, use_segmentation=False)
@@ -247,11 +255,11 @@ if __name__ == '__main__':
                 gradacc_d.step(loss_d, step)
 
                 # Logging.
-                avgloss.put(os.path.join(logging_path, 'Generator/reconstruction_loss'),    rec_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Generator/perceptual_loss'),        per_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Generator/adverarial_loss'),        gen_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Generator/kl_regularization'),      kld_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Discriminator/adverarial_loss'),    loss_d.item())
+                avgloss.put(os.path.join(LOGGING_PATH, 'Generator/reconstruction_loss'),    rec_loss.item())
+                avgloss.put(os.path.join(LOGGING_PATH, 'Generator/perceptual_loss'),        per_loss.item())
+                avgloss.put(os.path.join(LOGGING_PATH, 'Generator/adverarial_loss'),        gen_loss.item())
+                avgloss.put(os.path.join(LOGGING_PATH, 'Generator/kl_regularization'),      kld_loss.item())
+                avgloss.put(os.path.join(LOGGING_PATH, 'Discriminator/adverarial_loss'),    loss_d.item())
 
                 
                 if total_counter % 10 == 0:
@@ -281,4 +289,7 @@ if __name__ == '__main__':
                         'scaler_d_state_dict': gradacc_d.grad_scaler.state_dict()
                     }
 
-            torch.save(checkpoint, os.path.join(logging_path, f'checkpoint-epoch-{epoch}.pth'))
+            torch.save(checkpoint, os.path.join(LOGGING_PATH, f'checkpoint-epoch-{epoch}.pth'))
+
+            # Close previous writer
+            writer.close()
