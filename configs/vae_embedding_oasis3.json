@@ -1,0 +1,33 @@
+{
+    "seed": 42,
+    "load_path": "/mimer/NOBACKUP/groups/biomedicalimaging-kth/felixnie/batched_OASIS3",
+    "save_path": "/mimer/NOBACKUP/groups/biomedicalimaging-kth/felixnie/batched_OASIS3__emb",
+    "extension": ".npz",
+    "ckpt_path": "/cephyr/users/felixnie/Alvis/logs/20250703_094042/checkpoint-epoch-3.pth",
+    "ckpt_key": "autoencoder_state_dict",
+    "use_old_state_dict": false,
+    "vae_config": {
+        "spatial_dims": 3,
+        "in_channels": 1,
+        "out_channels": 1,
+        "channels": [
+            64,
+            128,
+            128,
+            128
+        ],
+        "latent_channels": 8,
+        "num_res_blocks": 2,
+        "norm_num_groups": 32,
+        "norm_eps": 1e-6,
+        "attention_levels": [
+            false,
+            false,
+            false,
+            false
+        ],
+        "with_encoder_nonlocal_attn": false,
+        "with_decoder_nonlocal_attn": false,
+        "include_fc": false
+    }
+}
