@@ -1,7 +1,7 @@
 {
     "seed": 42,
-    "load_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_OASIS3",
-    "save_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_OASIS3__emb",
+    "load_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_adni",
+    "save_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_adni__emb",
     "extension": ".npz",
     "ckpt_path": "/cephyr/users/felixnie/Alvis/logs/20250703_094042/checkpoint-epoch-8.pth",
     "ckpt_key": "autoencoder_state_dict",

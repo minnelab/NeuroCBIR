@@ -13,6 +13,7 @@ from tqdm import tqdm
 import json
 from preprocessing.padding import pad_mri_to_shape
 from collections import defaultdict
+import math
 
 def list_files_with_extension(directory, extension):
     """
@@ -437,7 +438,8 @@ class LookupNPZDataset(Dataset):
         row = self.metadata.iloc[idx]
         index_in_batch = row["index_in_batch"]
         sample_id = row["GUID"]
-        image = self.images[index_in_batch].copy().astype(float) / 255.0
+        image = self.images[index_in_batch].copy().astype(float) / 255.0  # shape: [D, H, W]
+        image = np.expand_dims(image, axis=0) # shape: [1, D, H, W]
 
         sample = {
             "id": sample_id,
@@ -445,27 +447,87 @@ class LookupNPZDataset(Dataset):
         }
 
         if self.use_segmentation and self.segmentations is not None:
-            seg = self.segmentations[index_in_batch]
+            seg = self.segmentations[index_in_batch] # shape: [D, H, W]
+            seg = np.expand_dims(seg, axis=0) # shape: [1, D, H, W]
             sample["seg"] = torch.from_numpy(seg)
 
         return sample
 
-def get_balanced_batch(dataset, group_size=4, groups_per_batch=3, device="cuda"):
+# Embedding VAE batched dataset
+class EmbBatchedDataset(Dataset):
+    def __init__(self, metadata, batch_files):
+        if isinstance(batch_files, str):
+            batch_files = [batch_files]
+
+        self.embs = []
+        self.guids = []
+        self.index_map = []  # [(batch_index, index_in_batch), ...]
+
+        # Filter metadata for relevant files
+        self.metadata = metadata[metadata["batch_file"].isin(batch_files)].reset_index(drop=True)
+
+        # Load and store data from each batch file
+        self.loaded_batches = {}
+        for i, batch_file in enumerate(batch_files):
+            npz_data = np.load(batch_file)
+            embs = np.array(npz_data["mus"])
+            guids = np.array(npz_data["GUID"])
+            npz_data.close()
+
+            self.loaded_batches[batch_file] = (embs, guids)
+
+        # Prepare lookup indices
+        for idx, row in self.metadata.iterrows():
+            batch_file = row["batch_file"]
+            index_in_batch = row["index_in_batch"]
+            self.index_map.append((batch_file, index_in_batch))
+
+    def __len__(self):
+        return len(self.index_map)
+
+    def __getitem__(self, idx):
+        batch_file, index_in_batch = self.index_map[idx]
+        embs, guids = self.loaded_batches[batch_file]
+
+        emb = embs[index_in_batch].copy().astype(float) / 255.0  # Normalize
+        guid = guids[index_in_batch]
+
+        return {
+            "guid": guid,
+            "emb": torch.from_numpy(emb)
+        }
+
+
+def get_balanced_batch(dataset, group_size=4, groups_per_batch=3, group_key="subject", device="cuda"):
     """
-    Return a batch of {'feats': ..., 'labels': ...} for MultiPosConLoss.
+    Returns a batch dict with all tensor fields in each sample, plus 'labels'.
+
+    Args:
+        dataset: Dataset with __getitem__ returning a dict of tensors.
+        group_size: Number of samples per group (class/subject/etc.).
+        groups_per_batch: Number of groups to sample in the batch.
+        group_key: Key in `dataset.metadata` to group by (e.g., 'subject').
+        device: Device to move tensors to.
+
+    Returns:
+        A dict with all tensor keys batched, and an added 'labels' tensor.
     """
     subject_to_indices = defaultdict(list)
 
+    # Group all sample indices by subject/class/etc.
     for idx in range(len(dataset)):
-        subject = dataset.metadata.iloc[idx]["subject"]
-        subject_to_indices[subject].append(idx)
+        group_val = dataset.metadata.iloc[idx][group_key]
+        subject_to_indices[group_val].append(idx)
 
-    # Pick patients with enough samples
+    # Pick eligible groups (those with enough samples)
     eligible_subjects = [s for s, idxs in subject_to_indices.items() if len(idxs) >= group_size]
+    if len(eligible_subjects) < groups_per_batch:
+        raise ValueError(f"Not enough eligible {group_key}s with ≥{group_size} samples.")
+
     random.shuffle(eligible_subjects)
 
     batch_indices = []
-    label_lookup = {}  # subject_id → class label
+    label_lookup = {}
     label_counter = 0
 
     for subject in eligible_subjects[:groups_per_batch]:
@@ -474,18 +536,75 @@ def get_balanced_batch(dataset, group_size=4, groups_per_batch=3, device="cuda")
         label_lookup[subject] = label_counter
         label_counter += 1
 
-    # Load and encode batch
-    images = []
-    labels = []
+    # Initialize output dict with keys from a sample
+    keys = list(dataset[0].keys())
+    output = {k: [] for k in keys}
+    output["labels"] = []
 
+    # Load and stack tensors
     for idx in batch_indices:
         sample = dataset[idx]
-        image = sample["image"].float().unsqueeze(0).unsqueeze(0).to(device)  # shape: [1, C, D, H, W] or [1, D, H, W]
-        subject = dataset.metadata.iloc[idx]["subject"]
-        images.append(image)
-        labels.append(label_lookup[subject])
+        for k in keys:
+            if isinstance(sample[k], torch.Tensor):
+                output[k].append(sample[k].unsqueeze(0))
+        subject = dataset.metadata.iloc[idx][group_key]
+        output["labels"].append(label_lookup[subject])
 
-    image_tensor = torch.cat(images, dim=0)  # shape: [B, ...]
-    label_tensor = torch.tensor(labels, dtype=torch.long, device=device)
+    # Stack everything
+    for k in keys:
+        if output[k]:  # skip keys with no tensors
+            output[k] = torch.cat(output[k], dim=0).type(torch.float).to(device)
+    output["labels"] = torch.tensor(output["labels"], dtype=torch.float, device=device)
 
-    return {'feats': image_tensor, 'labels': label_tensor}
+    return output
+
+
+class SequentialBatchIterator:
+    def __init__(self, dataset, batch_size, device="cuda"):
+        """
+        Initializes the batch iterator.
+
+        Args:
+            dataset: Dataset with __getitem__ returning a dict.
+            batch_size: Number of samples per batch.
+            device: Device to move tensor fields to.
+        """
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.device = device
+        self.current_index = 0
+        self.total_samples = len(dataset)
+        self.keys = list(dataset[0].keys())  # assumes consistent keys across dataset
+
+    def __iter__(self):
+        self.current_index = 0  # Reset for each iteration
+        return self
+
+    def __len__(self):
+        return math.ceil(self.total_samples / self.batch_size)
+
+    def __next__(self):
+        if self.current_index >= self.total_samples:
+            raise StopIteration
+
+        start_idx = self.current_index
+        end_idx = min(start_idx + self.batch_size, self.total_samples)
+
+        output = {k: [] for k in self.keys}
+
+        for idx in range(start_idx, end_idx):
+            sample = self.dataset[idx]
+            for k in self.keys:
+                val = sample[k]
+                if isinstance(val, torch.Tensor):
+                    output[k].append(val.unsqueeze(0))  # keep batch dim
+                else:
+                    output[k].append(val)  # leave as list
+
+        for k in self.keys:
+            if output[k] and isinstance(output[k][0], torch.Tensor):
+                output[k] = torch.cat(output[k], dim=0).to(self.device).float()
+
+        self.current_index = end_idx
+        return output
+

@@ -62,9 +62,11 @@ class MultiPosConLoss(nn.Module):
     def set_temperature(self, temp=0.1):
         self.temperature = temp
 
-    def forward(self, outputs):
-        feats = outputs['feats']    # shape: [B, D]
-        labels = outputs['labels']  # shape: [B]
+    def forward(self, feats, labels):
+        '''
+        feats: shape: [B, D]
+        labels: shape: [B]
+        '''
 
         feats = F.normalize(feats, dim=-1, p=2)
         local_batch_size = feats.size(0)
@@ -92,4 +94,4 @@ class MultiPosConLoss(nn.Module):
         p = mask / mask.sum(1, keepdim=True).clamp(min=1.0)
         q = F.log_softmax(logits, dim=-1)
         loss = -torch.sum(p * q, dim=-1).mean()
-        return {'loss': loss, 'image_loss': loss}
+        return loss

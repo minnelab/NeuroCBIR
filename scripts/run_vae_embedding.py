@@ -44,9 +44,9 @@ def process_batch(data, autoencoder, device):
     ids = []
 
     images = data['images']
-    sample_ids = data['ids']
+    sample_ids = data['GUID']
 
-    for img, sample_id in tqdm(zip(images, sample_ids), total=len(images), ncols=180, desc="Processing batch"):
+    for img, sample_id in tqdm(zip(images, sample_ids), total=len(images), ncols=150, desc="Processing batch"):
         img = np.expand_dims(img, axis=0).astype(np.float32) / 255.0
         img = torch.tensor(img).unsqueeze(0).to(device)
 
@@ -70,6 +70,7 @@ def main(config):
                                  ckpt_path=config.get("ckpt_path"),
                                  use_old_state_dict=config.get("use_old_state_dict")
                                 )
+    autoencoder.eval()
     
      # List input files
     file_paths, file_names = list_files_with_extension(config["load_path"], config["extension"])

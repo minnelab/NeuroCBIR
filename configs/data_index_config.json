@@ -1,0 +1,8 @@
+{
+    "datasets": {
+        "OASIS": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_OASIS3__emb",
+        "ADNI": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_adni__emb"
+    },
+    "output_csv": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/dataset_index__emb.csv",
+    "id_key": "GUID"
+}
