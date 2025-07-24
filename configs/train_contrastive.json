@@ -6,14 +6,11 @@
     "metadata_file_name": "combined_metadata.csv",
     "partition": "train",
     "num_epochs": 500,
+    "batch_size": 32,
     "group_size": 3,
     "groups_per_batch": 4,
     "n_batches_per_file": 300,
     "lr": 0.0001,
-    "projector_dims": [
-        256,
-        128
-    ],
     "proj_params": {
         "input_shape": [
             8,
@@ -22,7 +19,6 @@
             26
         ],
         "projector_dims": [
-            256,
             128
         ],
         "final_dim": 64
@@ -31,11 +27,11 @@
         "spatial_dims": 3,
         "in_channels": 8,
         "channels": [
-            32,
             64,
-            128
+            128,
+            256
         ],
-        "out_channels": 128,
+        "out_channels": 256,
         "num_res_blocks": [
             2,
             2,

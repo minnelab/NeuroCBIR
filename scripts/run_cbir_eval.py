@@ -4,13 +4,14 @@ import numpy as np
 import pandas as pd
 import argparse
 from cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval, evaluate_bias_by_column
+from utils import load_config_from_path
 
 def main(config):
 
     # os.makedirs(config["output_dir"], exist_ok=True)
 
     # Load and filter metadata
-    clinical_ds = pd.read_csv(os.path.join(config["data_path"], config["metadata_file"]))
+    clinical_ds = pd.read_csv(os.path.join(config["data_path"], config["metadata_file_name"]))
     if config.get("project_filter"):
         clinical_ds = clinical_ds.query(f"project == '{config['project_filter']}'").reset_index(drop=True)
 
@@ -71,12 +72,21 @@ def main(config):
 
     print(f"✅ Evaluation complete. Results saved to: {config['output_dir']}")
 
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--config", type=str, required=True, help="Path to config JSON file")
+#     args = parser.parse_args()
+
+#     with open(args.config, "r") as f:
+#         config = json.load(f)
+
+#     main(config)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True, help="Path to config JSON file")
+    parser.add_argument('--config', required=True, help='Path to the config .py file')
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
-        config = json.load(f)
+    config = load_config_from_path(args.config)
 
     main(config)

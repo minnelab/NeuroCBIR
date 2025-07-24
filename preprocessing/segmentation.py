@@ -1,12 +1,15 @@
 import numpy as np
 
-def extract_bounding_box(segmentation_mask):
+def extract_bounding_box(segmentation_mask, robust=True):
+    if robust:
+        segmentation_mask = (segmentation_mask / segmentation_mask.max()) > 0.05
     nonzero_indices = np.where(segmentation_mask != 0)
+
     if nonzero_indices[0].size == 0:
         return None
-    min_coords = (int(np.min(nonzero_indices[0])), int(np.min(nonzero_indices[1])), int(np.min(nonzero_indices[2])))
-    max_coords = (int(np.max(nonzero_indices[0])), int(np.max(nonzero_indices[1])), int(np.max(nonzero_indices[2])))
-    return min_coords, max_coords
+    min_coords = np.min(nonzero_indices, axis=1)
+    max_coords = np.max(nonzero_indices, axis=1)
+    return tuple(min_coords), tuple(max_coords)
 
 def get_common_bounding_box(initial_bbox, common_shape):
     """

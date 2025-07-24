@@ -28,6 +28,8 @@ def main(config):
     set_determinism(0)
     device = config["device"]
     os.makedirs(config["logging_path"], exist_ok=True)
+    with open(os.path.join(config["logging_path"], "config.json"), "w") as f:
+        json.dump(config, f, indent=4)
 
     # Load metadata
     index_ds = pd.read_csv(os.path.join(config["data_path"], config["dataset_index_file_name"]))
@@ -91,11 +93,12 @@ def main(config):
             with autocast(device_type=device, enabled=True):
                 batch = get_balanced_batch(
                     dataset,
+                    batch_size=config["batch_size"],
                     group_size=config["group_size"],
                     groups_per_batch=config["groups_per_batch"],
                     device=device
                 )
-                embs, labels = batch["emb"], batch["labels"]
+                embs, labels = batch["emb"], batch["label"]
                 proj_embs = model(embs)
                 cont_loss = cont_loss_fn(proj_embs, labels)
 

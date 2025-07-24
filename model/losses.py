@@ -3,7 +3,6 @@ import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 
-
 class WeightedMSELoss(nn.Module):
     def __init__(self, reduction='mean'):
         super(WeightedMSELoss, self).__init__()
@@ -49,49 +48,52 @@ class KLDivergenceLoss:
         return torch.sum(kl_loss) / kl_loss.shape[0]
 
 class MultiPosConLoss(nn.Module):
-    '''
-    https://github.com/google-research/syn-rep-learn/blob/main/StableRep/models/losses.py
-    '''
     def __init__(self, temperature=0.1):
         super().__init__()
         self.temperature = temperature
-        self.logits_mask = None
-        self.mask = None
-        self.last_local_batch_size = None
 
     def set_temperature(self, temp=0.1):
         self.temperature = temp
 
     def forward(self, feats, labels):
-        '''
-        feats: shape: [B, D]
-        labels: shape: [B]
-        '''
+        """
+        Args:
+            feats: [B, D] - Embeddings
+            labels: [B] - Categorical labels (could repeat or be unique)
+        Returns:
+            Scalar loss
+        """
+        device = feats.device
+        feats = F.normalize(feats, dim=-1)
+        logits = torch.matmul(feats, feats.T) / self.temperature  # [B, B]
 
-        feats = F.normalize(feats, dim=-1, p=2)
-        local_batch_size = feats.size(0)
+        # Build positive mask (1 if same label, 0 otherwise)
+        label_mask = labels.view(-1, 1) == labels.view(1, -1)  # [B, B]
 
-        # For single GPU: no all_gather
-        all_feats = feats
-        all_labels = labels
+        pos_mask = label_mask.float()
+        neg_mask = (~label_mask).float()
 
-        # Compute mask: multiple positives = same label
-        if local_batch_size != self.last_local_batch_size:
-            mask = torch.eq(labels.view(-1, 1), all_labels.view(1, -1)).float().to(feats.device)
-            self.logits_mask = torch.ones_like(mask)
-            self.logits_mask.fill_diagonal_(0)
-            self.mask = mask * self.logits_mask
-            self.last_local_batch_size = local_batch_size
+        # Count positives per sample
+        pos_counts = pos_mask.sum(dim=1, keepdim=True)  # [B, 1]
 
-        mask = self.mask
-        logits = torch.matmul(feats, all_feats.T) / self.temperature
-        logits = logits - (1 - self.logits_mask) * 1e9
+        # Avoid divide-by-zero and use fallback
+        has_pos = (pos_counts > 0).float()
+        no_pos = 1.0 - has_pos
 
-        # Stability
-        logits = logits - logits.max(dim=1, keepdim=True)[0].detach()
+        # Soft targets for samples with positives
+        pos_probs = pos_mask / pos_counts.clamp(min=1.0)
 
-        # Soft targets
-        p = mask / mask.sum(1, keepdim=True).clamp(min=1.0)
-        q = F.log_softmax(logits, dim=-1)
-        loss = -torch.sum(p * q, dim=-1).mean()
+        # Fallback: NT-Xent (sample treated as having self as only positive)
+        fallback_probs = F.one_hot(torch.arange(len(labels), device=device), num_classes=len(labels)).float()
+
+        # Final target distribution
+        target_probs = has_pos * pos_probs + no_pos * fallback_probs
+
+        log_probs = F.log_softmax(logits, dim=1)
+        loss = -torch.sum(target_probs * log_probs, dim=1).mean()
+
+        # This is to compute the minimum loss value possible in each batch (depends on the labels).
+        # min_loss = torch.sum(target_probs * -torch.log(target_probs.clamp(min=1e-9)), dim=1).mean()
+
         return loss
+

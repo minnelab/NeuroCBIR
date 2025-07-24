@@ -3,11 +3,11 @@ import json
 import argparse
 import pandas as pd
 from tqdm import tqdm
+from utils import load_config_from_path
 
 import torch
 from monai.networks.nets.autoencoderkl import Encoder
 from monai.utils import set_determinism
-
 from model.contrastive_model import ContrastiveModel
 from preprocessing import EmbBatchedDataset, SequentialBatchIterator
 
@@ -73,12 +73,12 @@ def main(config):
     df_embs.to_parquet(output_path, index=False)
     print(f"✅ Embeddings saved to {output_path}")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True, help="Path to config .json")
+    parser.add_argument('--config', required=True, help='Path to the config .py file')
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
-        config = json.load(f)
+    config = load_config_from_path(args.config)
 
     main(config)

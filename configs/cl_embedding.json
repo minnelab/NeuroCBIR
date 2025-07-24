@@ -1,6 +1,6 @@
 {
     "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/",
-    "resume_path": "/cephyr/users/felixnie/Alvis/logs/20250709_120205/checkpoint-epoch-45.pth",
+    "resume_path": "/cephyr/users/felixnie/Alvis/logs/20250709_171311/checkpoint-epoch-30.pth",
     "output_dir": "data/results/eval/",
     "dataset_index_file_name": "dataset_index__emb.csv",
     "metadata_file_name": "combined_metadata.csv",

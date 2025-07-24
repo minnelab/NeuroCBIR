@@ -1,9 +1,9 @@
 {
     "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/",
+    "output_dir": "data/results/eval/",
     "metadata_file": "combined_metadata.csv",
     "embedding_file": "projected_embeddings.parquet",
     "project_filter": "",
-    "features_dim": 16,
     "class_column": "subject",
     "top_k_values": [
         1,
@@ -12,9 +12,9 @@
     ],
     "bias_columns": [
         "partition",
+        "project",
         "field_strength",
         "manufacturer",
         "model_name"
-    ],
-    "output_dir": "data/results/eval/"
+    ]
 }

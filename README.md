@@ -21,9 +21,6 @@ Multiple comparison for evaluation. Focus on the whole brain:
 - U-Map proj features from AE feautes
 - Features from CL with MultiPosConLoss
 - Features from CL with MultiPosConLoss + DANN
-- Features from CL with MultiPosConLoss + Age
-- Features from CL with MultiPosConLoss + Disease
-- Features from CL with MultiPosConLoss + Age + Disease
 
 **Testing domain invariance**
 
@@ -35,3 +32,13 @@ To confirm that z is domain-invariant after training:
 
 - Also visualize with t-SNE or UMAP and color by domain — domain clusters should disappear.
 
+**Testing datasets:**
+- 20% ADNI ✓
+- 20% OASIS3 ✓
+- 20% UK x (it is preprocessed in THEHIVE)
+
+**Testing datasets:**
+- 20% ADNI ✓
+- 20% OASIS3 ✓
+- MIRIAD x (no preprocessed)
+- GENIC x (ask Jingru)

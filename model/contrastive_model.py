@@ -8,7 +8,7 @@ class ContrastiveModel(nn.Module):
         encoder: nn.Module,
         input_shape: Sequence[int],
         projector_dims: Sequence[int] = [128, 64, 32],
-        include_bn: bool = True,
+        include_ln: bool = True,
         final_dim: int = 32,
         device: str = "cpu"
     ):
@@ -26,22 +26,24 @@ class ContrastiveModel(nn.Module):
         super().__init__()
         self.encoder = encoder.to(device)
 
+        # Global Average Pooling for 
+        self.pool = nn.AdaptiveAvgPool3d(1)
+
         # Infer flattened encoder output size
         with torch.no_grad():
             dummy_input = torch.zeros(1, *input_shape).to(device)
             dummy_output = self.encoder(dummy_input)
-            flat_dim = dummy_output.view(1, -1).shape[1]
+            flat_dim = dummy_output.shape[1]
 
         # Build projection head
         layers = []
         input_dim = flat_dim
         for dim in projector_dims:
             layers.append(nn.Linear(input_dim, dim))
-            if include_bn:
-                layers.append(nn.LayerNorm(dim))  # ← Replace BatchNorm1d
+            if include_ln:
+                layers.append(nn.LayerNorm(dim))
             layers.append(nn.ReLU(inplace=True))
             input_dim = dim
-
 
         if input_dim != final_dim:
             layers.append(nn.Linear(input_dim, final_dim))
@@ -50,6 +52,6 @@ class ContrastiveModel(nn.Module):
 
     def forward(self, x, return_encoder_output=False):
         x = self.encoder(x)
-        x_flat = torch.flatten(x, 1)
+        x_flat = torch.flatten(self.pool(x), start_dim=1)
         z = self.projector(x_flat)
         return (x, z) if return_encoder_output else z
