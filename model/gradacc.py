@@ -14,7 +14,7 @@ class GradientAccumulation:
     def __init__(self,
                  actual_batch_size: int, 
                  expect_batch_size: int,
-                 loader_len: int,
+                 # loader_len: int,
                  optimizer: Optimizer, 
                  grad_scaler: Optional[GradScaler] = None) -> None:
         """
@@ -36,7 +36,7 @@ class GradientAccumulation:
             'expect_batch_size must be divisible by actual_batch_size'
         self.actual_batch_size = actual_batch_size
         self.expect_batch_size = expect_batch_size
-        self.loader_len = loader_len
+        # self.loader_len = loader_len
         self.optimizer = optimizer
         self.grad_scaler = grad_scaler
 
@@ -61,7 +61,7 @@ class GradientAccumulation:
             self.grad_scaler.scale(loss).backward()
         else:
             loss.backward()        
-        if (step + 1) % self.steps_until_update == 0 or (step + 1) == self.loader_len:
+        if (step + 1) % self.steps_until_update == 0: # or (step + 1) == self.loader_len:
             if self.grad_scaler is not None:
                 self.grad_scaler.step(self.optimizer)
                 self.grad_scaler.update()

@@ -409,9 +409,9 @@ class ToTensor:
                 'mask': torch.from_numpy(mask).float()}
 
 
-##############################################
-##### Batched data loader
-##############################################
+
+# >>> Batched data loader
+
 
 class LookupNPZDataset(Dataset):
     def __init__(self, metadata, batch_file, use_segmentation=True):
@@ -454,7 +454,7 @@ class LookupNPZDataset(Dataset):
 
         return sample
 
-# Embedding VAE batched dataset
+# >>> BATCHED DATASET: WHOLE BRAIN <<<
 class EmbBatchedDataset(Dataset):
     def __init__(self, metadata, batch_files, metadata_fields=None):
         """
