@@ -15,6 +15,7 @@ from preprocessing.padding import pad_mri_to_shape
 from collections import defaultdict
 import math
 import pandas as pd
+import time
 
 def list_files_with_extension(directory, extension):
     """
@@ -569,16 +570,34 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
     Returns:
         Dict with tensors for 'emb', 'guid', 'labels', and any extra metadata fields.
     """
-    metadata = dataset.metadata
-    subject_to_indices = defaultdict(list)
 
-    for idx, row in metadata.iterrows():
-        subject_to_indices[row[group_key]].append(idx)
+    if not isinstance(group_key, list):
+        group_key = [group_key]
+
+    # Prepare metadata
+    metadata = dataset.metadata
+    comb_name = '-'.join(group_key)
+
+    # Avoid recomputing if already present
+    if comb_name not in metadata.columns:
+        metadata[comb_name] = metadata[group_key].agg('-'.join, axis=1)
+
+    if not getattr(dataset, 'subject_to_indices', None):
+        subject_to_indices = defaultdict(list)
+        for idx, row in metadata.iterrows():
+            subject_to_indices[row[comb_name]].append(idx)
+            dataset.subject_to_indices = subject_to_indices
+    else:
+        subject_to_indices = dataset.subject_to_indices
 
     # Pick eligible subjects with enough samples
-    eligible_subjects = [s for s, idxs in subject_to_indices.items() if len(idxs) >= group_size]
-    if len(eligible_subjects) < groups_per_batch:
-        raise ValueError(f"Not enough {group_key}s with ≥{group_size} samples.")
+    if not getattr(dataset, 'eligible_subjects', None):
+        eligible_subjects = [s for s, idxs in subject_to_indices.items() if len(idxs) >= group_size]
+        if len(eligible_subjects) < groups_per_batch:
+            raise ValueError(f"Not enough {group_key}s with ≥{group_size} samples.")
+        dataset.eligible_subjects = eligible_subjects
+    else:
+        eligible_subjects = dataset.eligible_subjects
 
     random.shuffle(eligible_subjects)
 
@@ -599,7 +618,7 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
     batch_indices = list(batch_indices)
 
     # Initialize output
-    output = {"emb": [], "guid": [], "labels": [], "subject": []}
+    output = {"emb": [], "guid": [], "label": [], "subject": []}
     sample_keys = dataset[0].keys()
     extra_fields = [k for k in sample_keys if k not in ("emb", "guid")]
 
@@ -611,7 +630,7 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
         sample = dataset[idx]
         output["emb"].append(sample["emb"].unsqueeze(0))
         output["guid"].append(sample["guid"])
-        subject_label = dataset.metadata.loc[idx, group_key]
+        subject_label = dataset.metadata.loc[idx, comb_name]
         output["subject"].append(subject_label)
         for field in extra_fields:
             output[field].append(sample[field])
@@ -676,6 +695,9 @@ class SequentialBatchIterator:
 # >>> BATCHED DATASET: SUBCORTICAL/CORTICAL STRUCTURES <<< 
 class SubCorBatDataset(Dataset):
     def __init__(self, metadata, batch_file, labels_bb_df, n_structs=10):
+        '''
+            n_structs: number of structs to include. If -1, all are included
+        '''
         self.metadata = metadata[metadata["batch_file"] == batch_file].reset_index(drop=True)
         self.batch_file = batch_file
 
@@ -707,11 +729,12 @@ class SubCorBatDataset(Dataset):
         sample = {
             "GUID": [],
             "struct_name": [],
+            "struct_map_id": [],
             "image": []
         }
 
         # Sample N random structures
-        i_rows = np.random.choice(len(self.labels_bb_df), len(self.labels_bb_df), replace=False)
+        i_rows = np.random.choice(len(self.labels_bb_df), len(self.labels_bb_df), replace=False) if self.n_structs > 0 else range(len(self.labels_bb_df))
 
         for i_row in i_rows:
             struct_row = self.labels_bb_df.iloc[i_row]
@@ -727,12 +750,14 @@ class SubCorBatDataset(Dataset):
             patch_brain = brain[:, x1:x2, y1:y2, z1:z2]
             patch_seg = (seg[:, x1:x2, y1:y2, z1:z2] == struct_map_id)
 
-            # Check that patch_seg is not zeros
-            if not np.any(patch_seg):
-                continue
-
             # Apply mask
             struct = patch_brain * patch_seg
+
+            # if self.n_structs > 0:
+            if not np.any(patch_seg): # Check that patch_seg is not zeros
+                continue
+            if np.isnan(struct).any(): # NaN check
+                continue
 
             # Convert to tensor and resize to (1, 64, 64, 64)
             struct_tensor = torch.from_numpy(struct).unsqueeze(0).half()  # [1, 1, D, H, W]
@@ -741,12 +766,294 @@ class SubCorBatDataset(Dataset):
             
             sample["GUID"].append(guid)
             sample["struct_name"].append(struct_name)
+            sample["struct_map_id"].append(struct_map_id)
             sample["image"].append(resized_struct)
 
             if len(sample["GUID"]) == self.n_structs:
                 break
 
+        if len(sample["image"]) == 0:
+            raise ValueError(f"No valid structures found for index {idx}. GUID {guid}")
+
         # Stack
         sample["image"] = torch.cat(sample["image"], dim=0)  # [N, 1, 64, 64, 64]
+
+        return sample
+
+class RegionEmbBatchedDataset(Dataset):
+    def __init__(self, metadata, batch_files, metadata_fields=None):
+        """
+        Args:
+            metadata (pd.DataFrame): Metadata with at least 'GUID' and 'batch_file'.
+            batch_files (str or list): Path(s) to .npz files with 'mus', 'GUID', and 'LabelName'.
+            metadata_fields (list or None): Optional list of metadata fields to return.
+        """
+        if isinstance(batch_files, str):
+            batch_files = [batch_files]
+
+        self.metadata_fields = metadata_fields if metadata_fields else []
+
+        self.metadata = metadata[metadata["batch_file"].isin(batch_files)].reset_index(drop=True)
+        valid_guids = set(self.metadata["GUID"])
+
+        all_embs = []
+        all_guids = []
+        all_struct_names = []
+
+        for batch_file in batch_files:
+            npz_data = np.load(batch_file)
+            embs = npz_data["mus"]                    # (N, 113, ...)
+            guids = npz_data["GUID"]                 # (N,)
+            struct_names = npz_data["struct_name"]     # (113,)
+            npz_data.close()
+
+            # Keep only the valid guid rows
+            keep_mask = [guid in valid_guids for guid in guids]
+            embs = embs[keep_mask]        # shape (N_keep, 113, ...)
+            guids = guids[keep_mask]      # shape (N_keep,)
+            struct_names = struct_names[keep_mask]      # shape (N_keep,)
+
+            all_embs.append(embs)
+            all_guids.append(guids)
+            all_struct_names.append(struct_names)
+
+        self.embs = np.concatenate(all_embs, axis=0)
+        self.guids = np.concatenate(all_guids, axis=0)
+        self.struct_names = np.concatenate(all_struct_names, axis=0)
+
+        # Build metadata lookup
+        self.guid_to_metadata = self.metadata.set_index("GUID").to_dict(orient="index")
+
+        if self.metadata_fields:
+            keep_indices = []
+            for i, guid in enumerate(self.guids):
+                row = self.guid_to_metadata.get(guid, {})
+                if all(pd.notna(row.get(field)) for field in self.metadata_fields):
+                    keep_indices.append(i)
+
+            self.embs = self.embs[keep_indices]
+            self.guids = self.guids[keep_indices]
+            self.struct_names = self.struct_names[keep_indices]
+
+            filtered_guids = set(self.guids)
+            self.metadata = self.metadata[self.metadata["GUID"].isin(filtered_guids)].reset_index(drop=True)
+            self.guid_to_metadata = self.metadata.set_index("GUID").to_dict(orient="index")
+
+        # Final metadata
+        add_to_metadata_list = []
+        for idx in range(self.__len__()):
+                sample = self.__getitem__(idx)
+                guid = sample["guid"]
+                struct_name = sample["struct_name"]
+                add_to_metadata_list.append({"GUID": guid, "struct_name": struct_name, "idx": idx})
+        add_to_metadata_df = pd.DataFrame(add_to_metadata_list)
+        self.metadata = pd.merge(self.metadata, add_to_metadata_df, on="GUID", how="inner")
+        self.metadata.set_index("idx", inplace=True)
+
+    def __len__(self):
+        return len(self.embs)
+
+    def __getitem__(self, idx):
+        emb = self.embs[idx].copy().astype(float)
+        guid = self.guids[idx]
+        struct_name = self.struct_names[idx]
+
+        sample = {
+            "guid": guid,
+            "emb": torch.from_numpy(emb).float(),
+            "struct_name": struct_name
+        }
+
+        if self.metadata_fields:
+            metadata_row = self.guid_to_metadata.get(guid, {})
+            for field in self.metadata_fields:
+                sample[field] = metadata_row.get(field, None)
+
+        return sample
+
+class SingleStructDataset(Dataset):
+    def __init__(self, metadata, batch_files, labels_bb_df, target_struct_name):
+        '''
+        Args:
+            metadata: DataFrame with info about all samples.
+            batch_file: Path to .npz file containing brain images and segmentations.
+            labels_bb_df: DataFrame with bounding boxes and structure IDs.
+            target_struct_name: Name of the subcortical structure to extract (must match LabelName column).
+        '''
+        if isinstance(batch_files, str):
+            batch_files = [batch_files]
+
+        self.metadata = metadata[metadata["batch_file"].isin(batch_files)].reset_index(drop=True)
+        self.batch_files = batch_files
+        self.target_struct_name = target_struct_name
+        self.structs = []
+        self.masks = []
+        self.guids = []
+        self.struct_map_id = None
+
+        # Load data for this batch
+        # npz_data = np.load(self.batch_file)
+        # images = np.array(npz_data["images"])
+        # segmentations = np.array(npz_data["segmentations"])
+        # guids = np.array(npz_data["GUID"])
+        # npz_data.close()
+
+
+
+        for batch_file in batch_files:
+            npz_data = np.load(batch_file)
+            images = np.array(npz_data["images"])
+            segmentations = np.array(npz_data["segmentations"])
+            guids = np.array(npz_data["GUID"])
+            npz_data.close()
+
+            # Filter the label row for the selected structure
+            struct_row_df = labels_bb_df.query(f"LabelName == '{self.target_struct_name}' and Use == 1").reset_index(drop=True)
+            if len(struct_row_df) == 0:
+                raise ValueError(f"Structure '{self.target_struct_name}' not found in labels_bb_df with Use == 1.")
+            struct_row = struct_row_df.iloc[0]
+            self.struct_map_id = struct_row["MapID"]
+
+            # Bounding box
+            x1, x2 = int(struct_row["min_x"]), int(struct_row["max_x"])
+            y1, y2 = int(struct_row["min_y"]), int(struct_row["max_y"])
+            z1, z2 = int(struct_row["min_z"]), int(struct_row["max_z"])
+
+            # Preprocess all samples
+            # for i in range(len(self.metadata)):
+            for guid, image, seg in zip(guids, images, segmentations):
+                # row = self.metadata.iloc[i]
+                # index_in_batch = row["index_in_batch"]
+                # guid = row["GUID"]
+
+                brain = image.astype(np.float32) / 255.0  # Normalize
+                brain = np.expand_dims(brain, axis=0)  # [1, D, H, W]
+                seg = np.expand_dims(seg, axis=0)  # [1, D, H, W]
+
+                # Crop and mask
+                patch_brain = brain[:, x1:x2, y1:y2, z1:z2]
+                patch_seg = (seg[:, x1:x2, y1:y2, z1:z2] == self.struct_map_id)
+
+                if not np.any(patch_seg):
+                    continue
+                struct = patch_brain * patch_seg
+
+                if np.isnan(struct).any():
+                    continue
+
+                # Resize to (1, 64, 64, 64)
+                struct_tensor = torch.from_numpy(struct).unsqueeze(0).half()  # [1, 1, D, H, W]
+                resized_struct = F.interpolate(struct_tensor, size=(64, 64, 64), mode='trilinear', align_corners=False)
+                self.structs.append(resized_struct[0])  # [1, 64, 64, 64]
+                self.masks.append(torch.from_numpy(patch_seg.astype(np.float32)))
+                self.guids.append(guid)
+
+        if len(self.structs) == 0:
+            raise RuntimeError(f"No valid samples found for structure '{self.target_struct_name}'.")
+
+    def __len__(self):
+        return len(self.structs)
+
+    def __getitem__(self, idx):
+        return {
+                    "GUID": self.guids[idx],
+                    "struct_name": self.target_struct_name,
+                    "struct_map_id": self.struct_map_id,
+                    "image": self.structs[idx],           # [1, 64, 64, 64]
+                    "mask": self.masks[idx]               # [1, 64, 64, 64]
+                }
+
+
+class SingleRegionEmbBatchedDataset(Dataset):
+    def __init__(self, metadata, batch_files, target_struct_name, metadata_fields=None):
+        """
+        Args:
+            metadata (pd.DataFrame): Metadata with at least 'GUID' and 'batch_file'.
+            batch_files (str or list): Path(s) to .npz files with 'mus', 'GUID', and 'LabelName'.
+            metadata_fields (list or None): Optional list of metadata fields to return.
+        """
+        if isinstance(batch_files, str):
+            batch_files = [batch_files]
+
+        self.metadata_fields = metadata_fields if metadata_fields else []
+
+        self.metadata = metadata[metadata["batch_file"].isin(batch_files)].reset_index(drop=True)
+        valid_guids = set(self.metadata["GUID"])
+
+        all_embs = []
+        all_guids = []
+        all_struct_names = []
+
+        for batch_file in batch_files:
+            npz_data = np.load(batch_file)
+            embs = npz_data["mus"]                    # (N, 113, ...)
+            guids = npz_data["GUID"]                 # (N,)
+            struct_names = npz_data["struct_name"]     # (113,)
+            npz_data.close()
+
+            # Keep only the valid guid rows
+            keep_mask = [(guid in valid_guids) and (struct_name == target_struct_name) for guid, struct_name in zip(guids, struct_names)]
+            embs = embs[keep_mask]        # shape (N_keep, 113, ...)
+            guids = guids[keep_mask]      # shape (N_keep,)
+            struct_names = struct_names[keep_mask]      # shape (N_keep,)
+
+            all_embs.append(embs)
+            all_guids.append(guids)
+            all_struct_names.append(struct_names)
+
+        self.embs = np.concatenate(all_embs, axis=0)
+        self.guids = np.concatenate(all_guids, axis=0)
+        self.struct_names = np.concatenate(all_struct_names, axis=0)
+
+        # Build metadata lookup
+        self.guid_to_metadata = self.metadata.set_index("GUID").to_dict(orient="index")
+
+        if self.metadata_fields:
+            keep_indices = []
+            for i, guid in enumerate(self.guids):
+                row = self.guid_to_metadata.get(guid, {})
+                if all(pd.notna(row.get(field)) for field in self.metadata_fields):
+                    keep_indices.append(i)
+
+            self.embs = self.embs[keep_indices]
+            self.guids = self.guids[keep_indices]
+            self.struct_names = self.struct_names[keep_indices]
+
+            filtered_guids = set(self.guids)
+            self.metadata = self.metadata[self.metadata["GUID"].isin(filtered_guids)].reset_index(drop=True)
+            self.guid_to_metadata = self.metadata.set_index("GUID").to_dict(orient="index")
+
+        # Final metadata
+        add_to_metadata_list = []
+        for idx in range(self.__len__()):
+                sample = self.__getitem__(idx)
+                guid = sample["guid"]
+                struct_name = sample["struct_name"]
+                add_to_metadata_list.append({"GUID": guid, "struct_name": struct_name, "idx": idx})
+        add_to_metadata_df = pd.DataFrame(add_to_metadata_list)
+        self.metadata = pd.merge(self.metadata, add_to_metadata_df, on="GUID", how="inner")
+        self.metadata.set_index("idx", inplace=True)
+
+
+
+
+    def __len__(self):
+        return len(self.embs)
+
+    def __getitem__(self, idx):
+        emb = self.embs[idx].copy().astype(float)
+        guid = self.guids[idx]
+        struct_name = self.struct_names[idx]
+
+        sample = {
+            "guid": guid,
+            "emb": torch.from_numpy(emb).float(),
+            "struct_name": struct_name
+        }
+
+        if self.metadata_fields:
+            metadata_row = self.guid_to_metadata.get(guid, {})
+            for field in self.metadata_fields:
+                sample[field] = metadata_row.get(field, None)
 
         return sample

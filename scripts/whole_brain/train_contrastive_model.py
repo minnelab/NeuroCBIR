@@ -4,6 +4,7 @@ import argparse
 import pandas as pd
 from datetime import datetime
 from tqdm import tqdm
+from utils import load_config_from_path
 
 import torch
 from torch.amp import autocast, GradScaler
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str, required=True, help='Path to the JSON configuration file')
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = load_config_from_path(args.config)
 
     # Set dynamic paths
     run_GUID = datetime.now().strftime("%Y%m%d_%H%M%S")

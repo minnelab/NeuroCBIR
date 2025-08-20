@@ -2,12 +2,12 @@
 
 config = {
     "random_state": 1234,
-    "data_path": "/mimer/NOBACKUP/groups/biomedicalimaging-kth/felixnie/",
+    "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/",
     "base_logging_path": "/cephyr/users/felixnie/Alvis/logs/",
     "labels_path": "data/labels.csv",
     "bb_path": "data/bounding_boxes.csv",
     "resume_path": "",
-    "num_epochs": 500,
+    "num_epochs": 10000,
     "max_batch_size": 8, # <-- must be divisible by "n_structs"
     "batch_size": 24, # <-- must be divisible by "max_batch_size"
     "n_structs": 4,

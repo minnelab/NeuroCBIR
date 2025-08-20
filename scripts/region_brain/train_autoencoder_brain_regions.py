@@ -31,10 +31,9 @@ from preprocessing.load_dataset import SubCorBatDataset, SequentialBatchIterator
 
 def main(config):
 
-    # >>> Startup config
+    # Startup config
     seed = config["random_state"]
     set_determinism(seed)
-    running_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     data_path = config["data_path"]
     resume_path= config["resume_path"]
 
@@ -97,6 +96,8 @@ def main(config):
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
         optimizer_g.load_state_dict(checkpoint['optimizer_g_state_dict'])
         optimizer_d.load_state_dict(checkpoint['optimizer_d_state_dict'])
+        gradacc_g.grad_scaler.load_state_dict(checkpoint['scaler_g_state_dict'])
+        gradacc_d.grad_scaler.load_state_dict(checkpoint['scaler_d_state_dict'])
 
         start_epoch = checkpoint['epoch'] + 1
         total_counter = checkpoint['total_counter']
@@ -105,19 +106,24 @@ def main(config):
         start_epoch = 0
         total_counter = 0
 
-    for epoch in range(start_epoch, config["max_batch_size"]):
+    # New logging file
+    writer = SummaryWriter(log_dir=config["logging_path"])
+    for epoch in range(start_epoch, config["num_epochs"]):
         # random.shuffle(batch_files)
-
-        # New logging file
-        writer = SummaryWriter(log_dir=config["logging_path"])
-
         for batch_file in batch_files:
             dataset = SubCorBatDataset(metadata, batch_file, labels_bb_df, config["n_structs"])
             batch_iter = SequentialBatchIterator(dataset, batch_size=config["max_batch_size"] // config["n_structs"], device=config["device"])
-            progress_bar = tqdm(batch_iter, total=len(batch_iter), ncols=150)
+            progress_bar = tqdm(range(len(batch_iter)), total=len(batch_iter), ncols=150)
             progress_bar.set_description(f'Epoch {epoch} - File {os.path.basename(batch_file)}')
 
-            for step, batch in enumerate(progress_bar):  # loop over several batches per file
+            step = 0
+            for _ in progress_bar:
+                try:
+                    batch = next(batch_iter) # loop over several batches per file
+                except (ValueError, RuntimeError) as e:
+                    print(f"⚠️ Skipping batch at step {step} due to error: {e}")
+                    continue
+                
                 with autocast(device_type=config["device"], enabled=True):
                     images = batch["image"].to(config["device"])
                     images = images.reshape(-1, *images.shape[2:])
@@ -178,9 +184,10 @@ def main(config):
                         writer.add_figure("Comparison/GroundTruth_vs_Reconstruction", fig, global_step=global_step)
                         plt.close(fig)
                             
+                step += 1
                 total_counter += 1
 
-            # Save the model after each epoch.
+            # Save the model
             checkpoint = {
                         'epoch': epoch,
                         'total_counter': total_counter,
@@ -194,6 +201,7 @@ def main(config):
 
             # Close previous writer
             writer.close()
+            writer = SummaryWriter(log_dir=config["logging_path"])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -97,3 +97,36 @@ class MultiPosConLoss(nn.Module):
 
         return loss
 
+
+        # device = feats.device
+        # feats = F.normalize(feats, dim=-1)
+        # logits = torch.matmul(feats, feats.T) / self.temperature  # [B, B]
+
+        # # Exclude self-similarity from positive mask
+        # same_label = labels.view(-1, 1) == labels.view(1, -1)      # [B, B]
+        # not_self = ~torch.eye(len(labels), dtype=torch.bool, device=device)
+        # pos_mask = (same_label & not_self).float()
+        # neg_mask = (~same_label).float()
+
+        # # Count actual positives (excluding self)
+        # pos_counts = pos_mask.sum(dim=1, keepdim=True)  # [B, 1]
+
+        # has_pos = (pos_counts > 0).float()
+        # no_pos = 1.0 - has_pos
+
+        # # Normalize across positives
+        # pos_probs = pos_mask / pos_counts.clamp(min=1.0)
+
+        # # Fallback if no other positives exist
+        # fallback_probs = F.one_hot(torch.arange(len(labels), device=device), num_classes=len(labels)).float()
+
+        # # Final target
+        # target_probs = has_pos * pos_probs + no_pos * fallback_probs
+
+        # # Compute log probabilities
+        # log_probs = F.log_softmax(logits, dim=1)
+        # loss = -torch.sum(target_probs * log_probs, dim=1).mean()
+
+        # return loss
+
+
