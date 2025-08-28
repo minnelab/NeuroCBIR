@@ -63,7 +63,7 @@ def main(config):
 
     # Load metadata
     index_ds = pd.read_csv(os.path.join(data_path,"dataset_index.csv"))
-    clinical_ds = pd.read_csv(os.path.join(data_path,"combined_metadata.csv"))
+    clinical_ds = pd.read_csv(config["metadata_file"])
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner") # Merge on the 'GUID' column
     print(f"METADATA: Original rows: {len(metadata)}")
     metadata['subject'].replace('', pd.NA, inplace=True) # First, ensure empty strings are treated as NaN
@@ -87,9 +87,11 @@ def main(config):
      # Training configuration
     batch_files = sorted(metadata["batch_file"].unique())
 
-    
-
     for batch_file in batch_files:
+        output_filename = os.path.join(config["save_path"], batch_file.split(data_path)[-1])
+        if os.path.isfile(output_filename):
+            print(f"This file already exists: {output_filename}.")
+            continue
 
         z_mu_batch = []
         guid_batch = []
@@ -122,11 +124,9 @@ def main(config):
         z_mu_batch = np.concatenate(z_mu_batch, axis=0)
 
         # Save embeddings
-        filename = os.path.join(config["save_path"], batch_file.split(data_path)[-1])
-        os.makedirs(os.path.dirname(filename), exist_ok=True)  # <-- Ensure directory exists
-        np.savez_compressed(filename, mus=z_mu_batch, GUID=guid_batch, struct_name=struct_struct_name_batch, MapID=struct_map_id_batch)
-        print(f"Saved: {filename} with {len(z_mu_batch)} samples.")
-
+        os.makedirs(os.path.dirname(output_filename), exist_ok=True)  # <-- Ensure directory exists
+        np.savez_compressed(output_filename, mus=z_mu_batch, GUID=guid_batch, struct_name=struct_struct_name_batch, MapID=struct_map_id_batch)
+        print(f"Saved: {output_filename} with {len(z_mu_batch)} samples.")
 
 
 if __name__ == "__main__":

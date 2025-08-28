@@ -145,7 +145,7 @@ def evaluate_guid_retrieval(retrieval_df: pd.DataFrame, metadata_df: pd.DataFram
         hits_at_k += hits
         total_queries += 1
 
-    precision_at_k = hits_at_k / (total_queries * top_k)
+    precision_at_k = hits_at_k / (total_queries * top_k) if total_queries > 0 else 0.0
     success_at_k = hits_at_least_one / total_queries if total_queries > 0 else 0.0
 
     return {

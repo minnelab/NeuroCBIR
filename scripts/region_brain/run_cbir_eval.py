@@ -34,8 +34,11 @@ def main(config):
     all_metrics = {}
     combined_retrievals = []
 
-    for struct_name in dataset["LabelName"].unique()[0:2]:
+    struct_names = config["struct_names"]
+    if struct_names is None:
+        struct_names = dataset["LabelName"].unique()
 
+    for struct_name in struct_names:
         print(f"Processing: {struct_name}")
 
         subset = dataset.query(f"LabelName == '{struct_name}'").reset_index(drop=True)
@@ -48,7 +51,7 @@ def main(config):
 
         # Save retrieval dataframe
         retrieval_path = os.path.join(config["output_dir"], "retrieval.csv")
-        retrieval_df.to_csv(retrieval_path, index=False)
+        # retrieval_df.to_csv(retrieval_path, index=False)
 
         # Add LabelName column for tracking
         retrieval_df["LabelName"] = struct_name

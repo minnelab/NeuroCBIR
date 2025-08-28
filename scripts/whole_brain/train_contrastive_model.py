@@ -126,7 +126,7 @@ def main(config):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scaler_state_dict': grad_scaler.state_dict(),
             }
-            torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint-epoch-{epoch}.pth'))
+            torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint.pth'))
 
             writer.close()
             writer = SummaryWriter(log_dir=config["logging_path"])

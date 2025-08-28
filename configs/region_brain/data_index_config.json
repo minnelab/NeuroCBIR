@@ -1,8 +1,11 @@
 {
     "datasets": {
-        "OASIS": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/region_brain/batched_OASIS3",
-        "ADNI": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/region_brain/batched_adni"
+        "OASIS": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/batched_OASIS3",
+        "ADNI": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/batched_adni",
+        "MIRIAD": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/batched_miriad",
+        "AIBL": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/batched_aibl",
+        "SLIM": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/batched_slim"
     },
-    "output_csv": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/region_brain/dataset_index.csv",
+    "output_csv": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/dataset_index.csv",
     "id_key": "GUID"
 }

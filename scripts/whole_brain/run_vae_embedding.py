@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 from monai.networks.nets.autoencoderkl import AutoencoderKL
 from monai.utils import set_determinism
 from preprocessing.load_dataset import list_files_with_extension
@@ -62,7 +63,18 @@ def process_batch(data, autoencoder, device):
 def main(config):
     set_determinism(config["seed"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data_path = config["data_path"]
     os.makedirs(config["save_path"], exist_ok=True)
+
+    # Load metadata
+    index_ds = pd.read_csv(os.path.join(data_path,"dataset_index.csv"))
+    clinical_ds = pd.read_csv(config["metadata_file"])
+    metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner") # Merge on the 'GUID' column
+    print(f"METADATA: Original rows: {len(metadata)}")
+    metadata['subject'].replace('', pd.NA, inplace=True) # First, ensure empty strings are treated as NaN
+    metadata = metadata.dropna(subset=['subject']) # Then drop rows where subject is NaN
+    metadata = metadata.reset_index(drop=True) # Reset index
+    print(f"METADATA: Remaining rows: {len(metadata)}") # Check result
 
     # Load VAE
     autoencoder = load_vae_model(config=config["vae_config"],
@@ -73,13 +85,27 @@ def main(config):
     autoencoder.eval()
     
      # List input files
-    file_paths, file_names = list_files_with_extension(config["load_path"], config["extension"])
-    file_names.sort()
+    # file_paths, file_names = list_files_with_extension(config["load_path"], config["extension"])
+    # file_names.sort()
 
-    for file_path, file_name in zip(file_paths, file_names):
-        file_to_load = os.path.join(config["load_path"], file_path, file_name)
-        print(f"Processing {file_to_load}")
-        data = np.load(file_to_load)
+    # for file_path, file_name in zip(file_paths, file_names):
+    #     output_filename = os.path.join(config["save_path"], file_name)
+    #     if os.path.isfile(output_filename):
+    #         print(f"This file already exists: {output_filename}.")
+    #         continue
+
+    # Training configuration
+    batch_files = sorted(metadata["batch_file"].unique())
+
+    for batch_file in batch_files:
+        output_filename = os.path.join(config["save_path"], batch_file.split(data_path)[-1])
+        if os.path.isfile(output_filename):
+            print(f"This file already exists: {output_filename}.")
+            continue
+
+        # file_to_load = os.path.join(config["load_path"], file_path, file_name)
+        print(f"Processing {batch_file}")
+        data = np.load(batch_file)
 
         z_mu_batch, ids_batch = process_batch(data=data,
                                               autoencoder=autoencoder,
@@ -87,9 +113,10 @@ def main(config):
                                              )
 
         # Save embeddings
-        filename = os.path.join(config["save_path"], file_name)
-        np.savez_compressed(filename, mus=z_mu_batch, GUID=ids_batch)
-        print(f"Saved: {filename} with {len(z_mu_batch)} samples.")
+        # output_filename = os.path.join(config["save_path"], file_name)
+        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+        np.savez_compressed(output_filename, mus=z_mu_batch, GUID=ids_batch)
+        print(f"Saved: {output_filename} with {len(z_mu_batch)} samples.")
 
 
 

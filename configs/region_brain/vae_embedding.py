@@ -2,8 +2,9 @@
 
 config = {
     "random_state": 1234,
-    "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/",
-    "save_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/region_brain/",
+    "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/original/",
+    "save_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/",
+    "metadata_file": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/combined_metadata.csv", 
     "labels_path": "data/labels.csv",
     "bb_path": "data/bounding_boxes.csv",
     "ckpt_path": "/cephyr/users/felixnie/Alvis/logs/20250725_110120/checkpoint-epoch-12.pth",

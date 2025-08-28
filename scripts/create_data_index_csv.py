@@ -15,7 +15,9 @@ def create_lookup_table(root_dirs, output_csv, id_key):
     for dataset_name, root_dir in root_dirs.items():
         for batch_file in sorted(Path(root_dir).glob("*.npz")):
             with np.load(batch_file) as data:
-                ids = np.unique(data[id_key])
+                # ids = np.unique(data[id_key])
+                ids = pd.unique(data[id_key])
+                # ids = data[id_key]
                 for i, sample_id in enumerate(ids):
                     rows.append({
                         "GUID": sample_id,

@@ -716,9 +716,9 @@ class SubCorBatDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.metadata.iloc[idx]
-        index_in_batch = row["index_in_batch"]
         guid = row["GUID"]
-
+        index_in_batch = np.where(self.guids == guid)[0][0] # row["index_in_batch"]
+        
         brain = self.images[index_in_batch].copy().astype(np.float32) / 255.0  # [D, H, W]
         brain = np.expand_dims(brain, axis=0)  # [1, D, H, W]
 
