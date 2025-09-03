@@ -424,7 +424,7 @@ class LookupNPZDataset(Dataset):
         npz_data = np.load(self.batch_file)
 
         self.images = np.array(npz_data["images"])
-        self.ids = np.array(npz_data["ids"])
+        self.guids = np.array(npz_data["GUID"])
 
         if self.use_segmentation and "segmentations" in npz_data:
             self.segmentations = np.array(npz_data["segmentations"])
@@ -438,13 +438,13 @@ class LookupNPZDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.metadata.iloc[idx]
-        index_in_batch = row["index_in_batch"]
-        sample_id = row["GUID"]
+        guid = row["GUID"]
+        index_in_batch = np.where(self.guids == guid)[0][0] # row["index_in_batch"]
         image = self.images[index_in_batch].copy().astype(float) / 255.0  # shape: [D, H, W]
         image = np.expand_dims(image, axis=0) # shape: [1, D, H, W]
 
         sample = {
-            "id": sample_id,
+            "GUID": guid,
             "image": torch.from_numpy(image)
         }
 

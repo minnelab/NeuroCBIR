@@ -72,15 +72,6 @@ def main(config):
 
     print(f"✅ Evaluation complete. Results saved to: {config['output_dir']}")
 
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--config", type=str, required=True, help="Path to config JSON file")
-#     args = parser.parse_args()
-
-#     with open(args.config, "r") as f:
-#         config = json.load(f)
-
-#     main(config)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

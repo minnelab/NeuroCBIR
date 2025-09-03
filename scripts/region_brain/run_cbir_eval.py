@@ -38,7 +38,17 @@ def main(config):
     if struct_names is None:
         struct_names = dataset["LabelName"].unique()
 
+    # Loading previous computed structures in the .json   
+    metrics_path = os.path.join(config["output_dir"], "metrics.json")
+    if os.path.isfile(metrics_path):
+        with open(metrics_path, "r") as f:
+            all_metrics = json.load(f)
+
     for struct_name in struct_names:
+        if struct_name in all_metrics:
+            print(f"Skipping. Struct already computed in .json file: {struct_name}")
+            continue
+
         print(f"Processing: {struct_name}")
 
         subset = dataset.query(f"LabelName == '{struct_name}'").reset_index(drop=True)
@@ -83,7 +93,6 @@ def main(config):
         print("\nAll evaluations complete.")
 
         # Save metrics to JSON
-        metrics_path = os.path.join(config["output_dir"], "metrics.json")
         with open(metrics_path, "w") as f:
             json.dump(all_metrics, f, indent=4)
 
