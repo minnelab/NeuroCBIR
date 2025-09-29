@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from tqdm import tqdm
 
 def calculate_metrics(hits_at_k: int, hits_at_least_one: int, total_queries: int, total_retrieved: int) -> dict:
     """
@@ -90,7 +91,7 @@ def get_topk_guid_retrievals(dataset: pd.DataFrame, top_k: int = 3, feature_colu
     guids = dataset[guid_column].values
     retrievals = []
 
-    for i in range(len(dataset)):
+    for i in tqdm(range(len(dataset))):
         similarities = cosine_similarity(features_matrix[i].reshape(1, -1), features_matrix)[0]
         similarities[i] = -1  # Exclude self
         top_k_indices = np.argsort(similarities)[::-1][:top_k]
@@ -154,6 +155,67 @@ def evaluate_guid_retrieval(retrieval_df: pd.DataFrame, metadata_df: pd.DataFram
         'evaluated_queries': total_queries
     }
 
+def evaluate_guid_retrieval_map(retrieval_df: pd.DataFrame, metadata_df: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
+    """
+    Compute retrieval metrics (mAP@k, success@k) from top-k GUID retrieval DataFrame.
+
+    Args:
+        retrieval_df (pd.DataFrame): Output from get_topk_guid_retrievals().
+        metadata_df (pd.DataFrame): Original DataFrame that maps GUID to class.
+        top_k (int): Number of top similar entries to retrieve.
+        class_column (str): Column containing the class labels.
+
+    Returns:
+        dict: Retrieval evaluation metrics including mAP@k, success@k, and number of evaluated queries.
+    """
+    guid_to_class = metadata_df.set_index("GUID")[class_column].to_dict()
+
+    ap_list = []
+    hits_at_least_one = 0
+    total_queries = 0
+
+    for _, row in tqdm(retrieval_df.iterrows(), total=len(retrieval_df), ncols=150):
+        query_guid = row['query']
+        query_class = guid_to_class.get(query_guid, None)
+        if query_class is None:
+            continue
+
+        # Skip queries if there are fewer than top_k relevant items (excluding the query itself)
+        class_records = metadata_df[metadata_df[class_column] == query_class]
+        if len(class_records) - 1 < top_k:
+            continue
+
+        retrieved_guids = row.values[1:top_k+1]
+        retrieved_classes = [guid_to_class.get(g) for g in retrieved_guids]
+        valid_classes = [cls for cls in retrieved_classes if cls is not None]
+
+        if not valid_classes:
+            continue
+
+        # Compute AP for this query
+        hits = 0
+        precision_sum = 0.0
+        for i, cls in enumerate(valid_classes, start=1):
+            if cls == query_class:
+                hits += 1
+                precision_sum += hits / i
+        if hits > 0:
+            ap = precision_sum / min(len(class_records) - 1, top_k)  # normalize by number of possible relevant items
+            hits_at_least_one += 1
+        else:
+            ap = 0.0
+        ap_list.append(ap)
+        total_queries += 1
+
+    mAP_at_k = sum(ap_list) / total_queries if total_queries > 0 else 0.0
+    success_at_k = hits_at_least_one / total_queries if total_queries > 0 else 0.0
+
+    return {
+        'mAP@k': mAP_at_k,
+        'success@k': success_at_k,
+        'evaluated_queries': total_queries
+    }
+
 def evaluate_bias_by_column(
     retrieval_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
@@ -183,8 +245,10 @@ def evaluate_bias_by_column(
         if len(sub_retrieval_df) < top_k:
             continue  # skip tiny groups
 
-        metrics = evaluate_guid_retrieval(sub_retrieval_df, metadata_df, top_k=top_k, class_column=class_column)
+        metrics = evaluate_guid_retrieval_map(sub_retrieval_df, metadata_df, top_k=top_k, class_column=class_column)
         metrics[group_by_column] = group_val
         results.append(metrics)
 
     return results 
+
+

@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import argparse
-from cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval, evaluate_bias_by_column
+from cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval_map, evaluate_bias_by_column
 from utils import load_config_from_path
 
 def main(config):
@@ -31,14 +31,18 @@ def main(config):
     dataset["features"] = dataset[embedding_cols].apply(lambda row: row.to_numpy(), axis=1)
 
     # Compute retrieval
-    print("Computing retrieved cases...")
-    top_k_max = max(config["top_k_values"])
-    retrieval_df = get_topk_guid_retrievals(dataset, top_k=top_k_max)
-    print("✓ Done: retrieved cases.")
-
-    # Save retrieval dataframe
     retrieval_path = os.path.join(config["output_dir"], "retrieval.csv")
-    retrieval_df.to_csv(retrieval_path, index=False)
+    if not os.path.isfile(retrieval_path):
+        print("Computing retrieved cases...")
+        top_k_max = max(config["top_k_values"])
+        retrieval_df = get_topk_guid_retrievals(dataset, top_k=top_k_max)
+        print("✓ Done: retrieved cases.")
+
+        # Save retrieval dataframe
+        retrieval_df.to_csv(retrieval_path, index=False)
+    else:
+        print("Loading retrieved cases...")
+        retrieval_df = pd.read_csv(retrieval_path)
 
     # Evaluate metrics and bias
     all_metrics = {"standard": {}, "bias": {}}
@@ -49,7 +53,7 @@ def main(config):
 
         # Standard retrieval metric
         print("  → Computing standard retrieval metrics...")
-        all_metrics["standard"][f"top_{k}"] = evaluate_guid_retrieval(
+        all_metrics["standard"][f"top_{k}"] = evaluate_guid_retrieval_map(
             retrieval_df, clinical_ds, top_k=k, class_column=config["class_column"]
         )
         print(f"    ✓ Done with top-{k} standard metrics.")
