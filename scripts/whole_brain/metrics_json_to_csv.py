@@ -13,30 +13,32 @@ def main(config):
 
     # Loop over standard metrics (all data)
     for top, values in data.get("standard", {}).items():
-        row = {
-            "top": top,
-            "all": values["precision@k"],
-            "train": None,
-            "test": None,
-            "ADNI": None,
-            "OASIS": None,
-            "AIBL": None,
-            "MIRIAD": None,
-            "SLIM": None,
-        }
+        for metric in config["metrics"]:
+            row = {
+                "metric": metric,
+                "top": top,
+                "all": values[metric],
+                "train": None,
+                "test": None,
+                "ADNI": None,
+                "OASIS": None,
+                "AIBL": None,
+                "MIRIAD": None,
+                "SLIM": None,
+            }
 
-        # Add bias partition info (train/test)
-        for p in data.get("bias", {}).get(top, {}).get("partition", []):
-            row[p["partition"]] = p["precision@k"]
+            # Add bias partition info (train/test)
+            for p in data.get("bias", {}).get(top, {}).get("partition", []):
+                row[p["partition"]] = p[metric]
 
-        # Add bias project info
-        for proj in data.get("bias", {}).get(top, {}).get("project", []):
-            proj_name = proj["project"].upper()
-            if proj_name == "OASIS3":
-                proj_name = "OASIS"
-            row[proj_name] = proj["precision@k"]
+            # Add bias project info
+            for proj in data.get("bias", {}).get(top, {}).get("project", []):
+                proj_name = proj["project"].upper()
+                if proj_name == "OASIS3":
+                    proj_name = "OASIS"
+                row[proj_name] = proj[metric]
 
-        rows.append(row)
+            rows.append(row)
 
     # Convert to DataFrame
     df = pd.DataFrame(rows)

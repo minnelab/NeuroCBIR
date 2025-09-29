@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import argparse
-from cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval, evaluate_bias_by_column
+from cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval_map, evaluate_bias_by_column
 from utils import load_config_from_path
 
 def main(config):
@@ -44,8 +44,15 @@ def main(config):
         with open(metrics_path, "r") as f:
             all_metrics = json.load(f)
 
+    # Loading previuos computed structures in the .csv file
+    cr_struct_names = []
+    retrieval_path = os.path.join(config["output_dir"], "retrieval_all.csv")
+    if os.path.isfile(retrieval_path):
+        combined_retrievals.append(pd.read_csv(retrieval_path))
+        cr_struct_names = list(combined_retrievals[0]["LabelName"].unique())
+
     for struct_name in struct_names:
-        if struct_name in all_metrics:
+        if (struct_name in all_metrics) and (struct_name in cr_struct_names):
             print(f"Skipping. Struct already computed in .json file: {struct_name}")
             continue
 
@@ -59,13 +66,14 @@ def main(config):
         retrieval_df = get_topk_guid_retrievals(subset, top_k=top_k_max)
         print("✓ Done: retrieved cases.")
 
-        # Save retrieval dataframe
-        retrieval_path = os.path.join(config["output_dir"], "retrieval.csv")
-        # retrieval_df.to_csv(retrieval_path, index=False)
-
         # Add LabelName column for tracking
         retrieval_df["LabelName"] = struct_name
         combined_retrievals.append(retrieval_df)
+
+        # Check again if the struct eval metric was computed
+        if (struct_name in all_metrics):
+            print(f"Skipping. Struct already computed in .json file: {struct_name}")
+            continue
 
         # Evaluate metrics and bias
         all_metrics[struct_name] = {"standard": {}, "bias": {}}
@@ -76,7 +84,7 @@ def main(config):
 
             # Standard retrieval metric
             print("  → Computing standard retrieval metrics...")
-            all_metrics[struct_name]["standard"][f"top_{k}"] = evaluate_guid_retrieval(
+            all_metrics[struct_name]["standard"][f"top_{k}"] = evaluate_guid_retrieval_map(
                 retrieval_df, clinical_ds, top_k=k, class_column=config["class_column"]
             )
             print(f"    ✓ Done with top-{k} standard metrics.")
@@ -99,8 +107,13 @@ def main(config):
         print(f"✅ Evaluation complete. Results saved to: {config['output_dir']}")
     
     # After the loop — save the combined retrievals
-    retrieval_path = os.path.join(config["output_dir"], "retrieval_all.csv")
     pd.concat(combined_retrievals, ignore_index=True).to_csv(retrieval_path, index=False)
+
+    # Save metrics to JSON
+    with open(metrics_path, "w") as f:
+        json.dump(all_metrics, f, indent=4)
+
+    print(f"✅ Evaluation complete. Results saved to: {config['output_dir']}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

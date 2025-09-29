@@ -42,3 +42,8 @@ To confirm that z is domain-invariant after training:
 - 20% OASIS3 ✓
 - MIRIAD x (no preprocessed)
 - GENIC x (ask Jingru)
+
+**Comparisons**
+- 3D ResNet / ResNeXt (Available in PyTorchVideo, Torchvision, MONAI zoo.)
+- MedicalNet (Chen et al., 2019) (https://github.com/Tencent/MedicalNet)
+
