@@ -101,6 +101,54 @@ def get_topk_guid_retrievals(dataset: pd.DataFrame, top_k: int = 3, feature_colu
     col_names = ['query'] + [f'top{i+1}' for i in range(top_k)]
     return pd.DataFrame(retrievals, columns=col_names)
 
+def retrieve_topk_for_queries(
+    dataset: pd.DataFrame,
+    queries: pd.DataFrame,
+    top_k: int = 3,
+    feature_column: str = "features",
+    guid_column: str = "GUID"
+) -> pd.DataFrame:
+    """
+    Retrieve the top-k most similar entries for a subset of queries, 
+    using cosine similarity against the full dataset as the retrieval pool.
+
+    Args:
+        dataset (pd.DataFrame): Full pool of entries with features and GUIDs.
+        queries (pd.DataFrame): Subset of rows from dataset to use as queries.
+        top_k (int): Number of top similar entries to retrieve.
+        feature_column (str): Column containing the feature vectors.
+        guid_column (str): Column with unique scan identifiers (e.g., 'GUID').
+
+    Returns:
+        pd.DataFrame: Retrieval results. One row per query, first column is the query GUID,
+                      followed by the GUIDs of the top-k retrieved entries.
+    """
+    # Retrieval pool
+    features_matrix = np.stack(dataset[feature_column].values)
+    guids = dataset[guid_column].values
+
+    # Queries
+    query_features = np.stack(queries[feature_column].values)
+    query_guids = queries[guid_column].values
+
+    retrievals = []
+    for i in tqdm(range(len(queries)), desc="Retrieving"):
+        similarities = cosine_similarity(query_features[i].reshape(1, -1), features_matrix)[0]
+        
+        # Exclude self if query is in the dataset
+        if query_guids[i] in guids:
+            idx_self = np.where(guids == query_guids[i])[0]
+            similarities[idx_self] = -1
+
+        # Get top-k
+        top_k_indices = np.argsort(similarities)[::-1][:top_k]
+        row = [query_guids[i]] + guids[top_k_indices].tolist()
+        retrievals.append(row)
+
+    col_names = ["query"] + [f"top{i+1}" for i in range(top_k)]
+    return pd.DataFrame(retrievals, columns=col_names)
+
+
 def evaluate_guid_retrieval(retrieval_df: pd.DataFrame, metadata_df: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
     """
     Compute retrieval metrics (precision@k, success@k) from top-k GUID retrieval DataFrame.
