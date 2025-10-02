@@ -17,7 +17,7 @@ def main(config):
     embedding_cols = [col for col in embs_dataset.columns if col != "GUID"]
     embs_dataset["features"] = embs_dataset[embedding_cols].apply(lambda row: row.to_numpy(), axis=1) 
     # Drop the old embedding columns
-    embs_dataset = embs_dataset[["GUID", "LabelName", "features"]]
+    embs_dataset = embs_dataset[["GUID", "features"]]
 
     # Load whole-brain image query
     i_q = load_nifti(config["--img_path"])
@@ -38,7 +38,7 @@ def main(config):
     for rank, item in enumerate(top_k_retrieved, 1):
         table_data.append([rank, item["GUID"]])
 
-    headers = ["Rank", "GUID", "LabelName", "Score"]
+    headers = ["Rank", "GUID"]
     print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
     print("\n" + "="*50 + "\n")
