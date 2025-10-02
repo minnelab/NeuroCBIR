@@ -32,4 +32,5 @@ var/
 *.egg
 
 venv/
+tmp/
 
