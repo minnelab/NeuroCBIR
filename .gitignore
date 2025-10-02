@@ -13,6 +13,11 @@ reports/
 reports/logs/
 
 data/
+# But keep deploy/data/
+!deploy/data/
+# data to not share
+data_private/
+
 data/pretrained_models/
 *.pth
 
@@ -33,4 +38,5 @@ var/
 
 venv/
 tmp/
+
 
