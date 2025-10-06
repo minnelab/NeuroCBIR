@@ -1,0 +1,42 @@
+# Ignore virtual environments
+venv
+venv/
+*/venv/
+**/venv/
+
+# Ignore large data and outputs
+data_private
+data_private/
+**/data_private
+data
+data/
+datasets/
+logs/
+checkpoints/
+*.pth
+*.pt
+*.npz
+*.nii
+*.nii.gz
+*.mgz
+
+# Ignore build caches and system stuff
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+*.log
+.DS_Store
+
+# Git and IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Exclude Docker build cache directories
+deploy/docker/__pycache__/
+deploy/docker/.cache/
+
+# Exclude other folders
+dev

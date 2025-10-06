@@ -5,7 +5,7 @@
 
 # === Base image ===
 # You can switch to a PyTorch image if you want preinstalled torch
-FROM python:3.12-slim AS base
+FROM python:3.10-slim
 
 LABEL maintainer="Félix Nieto-del-Amor <fenda@kth.se>"
 LABEL description="NeuroCBIR: A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI Across Multiple Clinical Cohorts"
@@ -19,7 +19,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR $APP_HOME
 
 # ------------------------------------------------------------------------------
-# 11. Install system dependencies
+# 1. Install system dependencies
 # ------------------------------------------------------------------------------
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -33,7 +33,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxext6 \
         libxrender-dev \
         libffi-dev \
-        libnifti2 \
     && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------------------------
@@ -41,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ------------------------------------------------------------------------------
 
 # Copy only the requirements first (for Docker caching)
-COPY deploy/docker/requirements.txt requirements.txt
+COPY deploy/neurocbir/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ------------------------------------------------------------------------------
