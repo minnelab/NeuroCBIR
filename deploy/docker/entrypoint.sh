@@ -24,6 +24,5 @@ if [ "$1" = "bash" ] || [ "$1" = "sh" ]; then
     echo "🔧 Opening shell..."
     exec "$@"
 else
-    echo "▶️ Running NeuroCBIR main entry point..."
     exec python -m neurocbir "$@"
 fi

@@ -5,20 +5,20 @@ venv/
 **/venv/
 
 # Ignore large data and outputs
-data_private
-data_private/
-**/data_private
-data
-data/
-datasets/
-logs/
-checkpoints/
-*.pth
-*.pt
-*.npz
-*.nii
-*.nii.gz
-*.mgz
+# data_private
+# data_private/
+# **/data_private
+# data
+# data/
+# datasets/
+# logs/
+# checkpoints/
+# *.pth
+# *.pt
+# *.npz
+# *.nii
+# *.nii.gz
+# *.mgz
 
 # Ignore build caches and system stuff
 __pycache__/

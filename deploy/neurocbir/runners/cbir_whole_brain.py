@@ -37,12 +37,12 @@ def main(config):
     
     # Top-k retrieval
     logger.info("Computing similarities between query and dataset.")
-    top_k_retrieved = retrieve_topk_for_query(z_q, embs_dataset, top_k=config["top_k"])
-    logger.info(f"Ranking and retrieving Top-{config["top_k"]}.")
+    top_k_retrieved = retrieve_topk_for_query(z_q, embs_dataset, top_k=config['top_k'])
+    logger.info(f"Ranking and retrieving Top-{config['top_k']}.")
     
     # Fancy print
     print("\n" + "="*50)
-    print(f"Top-{config["top_k"]} Retrieval Results ".center(50, "="))
+    print(f"Top-{config['top_k']} Retrieval Results ".center(50, "="))
     print("="*50 + "\n")
     table_data = [] # Create table
     for rank, guid in enumerate(top_k_retrieved):

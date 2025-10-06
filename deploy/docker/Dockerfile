@@ -47,9 +47,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 3. Copy the application code
 # ------------------------------------------------------------------------------
 
-COPY deploy/neurocbir ./neurocbir
-COPY deploy/configs ./configs
-COPY deploy/data ./data
+COPY deploy/neurocbir /app/neurocbir
+COPY deploy/configs /app/configs
+COPY deploy/data /app/data
 COPY deploy/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -65,5 +65,5 @@ ENV PATH="$APP_HOME:$PATH"
 # ------------------------------------------------------------------------------
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["--help"]
+# CMD ["--help"]
 

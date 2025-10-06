@@ -12,8 +12,8 @@ services:
 
   neurocbir:
     build:
-      context: ../docker
-      dockerfile: Dockerfile
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile
     container_name: neurocbir
     depends_on:
       - fastsurfer

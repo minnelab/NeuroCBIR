@@ -1,49 +1,150 @@
-# NeuroCBIR
 
-# Multi-Positive Contrastive Losses
+# NeuroCBIR — Docker Setup & Usage Guide
 
-https://github.com/GSidiropoulos/typo-robust-multi-positive-DR
+This document summarizes the necessary commands to build and run **NeuroCBIR** using Docker and `docker-compose`.
 
-https://github.com/LeiWangR/cl
+---
 
-https://github.com/google-research/syn-rep-learn/blob/main/StableRep/models/losses.py
+## 📁 Project Structure
 
-# Experiments
+```
+project-root/
+├── deploy/
+│   ├── configs/
+│   ├── data/
+│   ├── docker/
+│   │   ├── Dockerfile
+│   │   └── entrypoint.sh
+│   ├── infra/
+│   │   └── docker-compose.yml
+│   └── neurocbir/
+├── .dockerignore
+├── .gitignore
+└── README.md
+```
 
-To do something to deal with the domain adaption, check this paper (Domain-invariant feature learning in brain MR imaging for
-content-based image retrieval)
+---
 
-Multiple comparison for evaluation. Focus on the whole brain:
+## 🛠 Prerequisites
 
-**Testing CBIR precision / success performance for:**
+- [Docker](https://docs.docker.com/get-docker/) (latest stable version)
+- [Docker Compose](https://docs.docker.com/compose/install/) (latest stable version)
+- Ensure `.dockerignore` exists in the project root to optimize builds
 
-- AE features
-- U-Map proj features from AE feautes
-- Features from CL with MultiPosConLoss
-- Features from CL with MultiPosConLoss + DANN
+---
 
-**Testing domain invariance**
+## 📌 Building the NeuroCBIR Docker Image
 
-To confirm that z is domain-invariant after training:
+From the project root (where `.dockerignore` is located):
 
-- Train a domain classifier (without GRL) on frozen z embeddings.
+```bash
+docker-compose -f deploy/infra/docker-compose.yml build neurocbir
+```
 
-- If accuracy is close to random (e.g. 50% for 2 domains), the DANN worked.
+This will:
+- Set the build context to the project root
+- Use the Dockerfile located at `deploy/docker/Dockerfile`
+- Build the `neurocbir` container image
 
-- Also visualize with t-SNE or UMAP and color by domain — domain clusters should disappear.
+---
 
-**Testing datasets:**
-- 20% ADNI ✓
-- 20% OASIS3 ✓
-- 20% UK x (it is preprocessed in THEHIVE)
+## 🚀 Running NeuroCBIR and Dependencies
 
-**Testing datasets:**
-- 20% ADNI ✓
-- 20% OASIS3 ✓
-- MIRIAD x (no preprocessed)
-- GENIC x (ask Jingru)
+From the project root:
 
-**Comparisons**
-- 3D ResNet / ResNeXt (Available in PyTorchVideo, Torchvision, MONAI zoo.)
-- MedicalNet (Chen et al., 2019) (https://github.com/Tencent/MedicalNet)
+```bash
+docker-compose -f deploy/infra/docker-compose.yml up -d
+```
 
+This starts:
+- `fastsurfer` service
+- `neurocbir` service
+
+---
+
+## 📄 Viewing Logs
+
+To view logs for a specific service:
+
+```bash
+docker-compose -f deploy/infra/docker-compose.yml logs -f neurocbir
+```
+
+Or for `fastsurfer`:
+
+```bash
+docker-compose -f deploy/infra/docker-compose.yml logs -f fastsurfer
+```
+
+---
+
+## 🛑 Stopping Services
+
+```bash
+docker-compose -f deploy/infra/docker-compose.yml down
+```
+
+This stops and removes containers while keeping volumes and networks.
+
+---
+
+## 🔄 Rebuilding After Changes
+
+If you change code or configuration files:
+
+```bash
+docker-compose -f deploy/infra/docker-compose.yml build --no-cache neurocbir
+docker-compose -f deploy/infra/docker-compose.yml up -d
+```
+
+---
+
+## 📂 Data & Config Volumes
+
+Volumes defined in `docker-compose.yml` allow you to share files between host and container:
+
+| Host Path        | Container Path      | Purpose                             |
+|-------------------|----------------------|--------------------------------------|
+| `../data`        | `/data`              | Input/output data files             |
+| `../configs`     | `/configs`           | Configuration YAML files            |
+| `../app`         | `/app`               | Application source code              |
+
+---
+
+## ⚙ Common Docker Commands
+
+List running containers:
+```bash
+docker ps
+```
+
+Stop a container:
+```bash
+docker stop neurocbir
+```
+
+Remove stopped containers:
+```bash
+docker container prune
+```
+
+List images:
+```bash
+docker images
+```
+
+Remove an image:
+```bash
+docker rmi neurocbir:latest
+```
+
+---
+
+## 📚 References
+
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+
+---
+
+**Tip:** Always keep `.dockerignore` up-to-date to avoid unnecessary files in your build context and speed up Docker builds.
