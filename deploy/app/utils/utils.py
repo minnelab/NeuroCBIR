@@ -1,22 +1,16 @@
 
 import nibabel as nib
-import os
 import numpy as np
-import importlib.util
 import pandas as pd
-import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
+import yaml
+import logging
 
+logger = logging.getLogger(__name__)
 
-def load_config_from_path(path):
-    spec = importlib.util.spec_from_file_location("config_module", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    
-    if hasattr(module, "config"):
-        return module.config
-    else:
-        raise AttributeError(f"No 'config' variable found in {path}")
+def load_yaml(path):
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
 
 def normalize_to_unit_range(image):
     image = image.astype(np.float32)
@@ -29,8 +23,11 @@ def crop_mri(image, target_shape=(160, 176, 208), start=[48, 38, 10]):
 
 def load_nifti(img_path, target_shape=(160, 176, 208), start=[48, 38, 10]):
     """Load a nii.gz, .nii or mgz file given a relative path from metadata."""
+    print(f"Loading preprocessed image {img_path} ...")
     img = nib.load(img_path).get_fdata()
+    print(f"Normalizing intensity levels in the range 0 to 1...")
     img = normalize_to_unit_range(img)
+    print(f"Cropping image to {target_shape} ...")
     img = crop_mri(img, target_shape=target_shape, start=start)
     return img
 
