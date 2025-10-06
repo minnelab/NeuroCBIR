@@ -1,4 +1,3 @@
-# app/main.py
 import argparse
 import logging
 from neurocbir.runners import cbir_region, cbir_whole_brain
@@ -49,6 +48,6 @@ def main():
         cbir_whole_brain.main(config)
     elif config["scope"] == "region":
         cbir_region.main(config)
-
+        
 if __name__ == "__main__":
     main()

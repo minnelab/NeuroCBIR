@@ -1,8 +1,29 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e  # Exit immediately if a command exits with a non-zero status
 
-# Basic wrapper so container can be run as:
-# docker run --gpus all -v $(pwd)/data:/app/data image -- --img1 /app/data/a.nii.gz --img2 /app/data/b.nii.gz --model /app/data/classifier.pth
+# ------------------------------------------------------------------------------
+# NeuroCBIR Docker Entrypoint
+# ------------------------------------------------------------------------------
+# This script serves as the main entrypoint for running the NeuroCBIR application
+# inside a Docker container.
+#
+# It assumes:
+# - The Python environment is already installed and activated.
+# - The working directory is set to /app (or wherever neurocbir/ lives).
+# - Configuration files are in deploy/configs/.
+# ------------------------------------------------------------------------------
 
-# If first arg is --* then call infer.py with all args
-python /app/infer.py "$@"
+echo "🚀 Starting NeuroCBIR container..."
+echo "📁 Working directory: $(pwd)"
+echo "🐍 Python version: $(python --version)"
+echo "📦 Installed packages snapshot:"
+pip list | grep neurocbir || echo "(NeuroCBIR package not found — continuing anyway)"
+
+# Allow overriding the command (e.g., to open a shell)
+if [ "$1" = "bash" ] || [ "$1" = "sh" ]; then
+    echo "🔧 Opening shell..."
+    exec "$@"
+else
+    echo "▶️ Running NeuroCBIR main entry point..."
+    exec python -m neurocbir "$@"
+fi

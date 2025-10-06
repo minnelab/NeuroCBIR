@@ -1,27 +1,70 @@
-FROM python:3.11-slim
+# ------------------------------------------------------------------------------
+# NeuroCBIR Dockerfile
+# CPU-only version (compatible with deepmi/fastsurfer:cpu-v2.4.2 if needed)
+# ------------------------------------------------------------------------------
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    wget \
-    curl \
+# === Base image ===
+# You can switch to a PyTorch image if you want preinstalled torch
+FROM python:3.12-slim AS base
+
+LABEL maintainer="Félix Nieto-del-Amor <fenda@kth.se>"
+LABEL description="NeuroCBIR: A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI Across Multiple Clinical Cohorts"
+
+# === Environment setup ===
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    APP_HOME=/app
+
+WORKDIR $APP_HOME
+
+# ------------------------------------------------------------------------------
+# 11. Install system dependencies
+# ------------------------------------------------------------------------------
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        wget \
+        curl \
+        ca-certificates \
+        build-essential \
+        libglib2.0-0 \
+        libsm6 \
+        libxext6 \
+        libxrender-dev \
+        libffi-dev \
+        libnifti2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set workdir
-WORKDIR /app
+# ------------------------------------------------------------------------------
+# 2. Install Python dependencies
+# ------------------------------------------------------------------------------
 
-# Copy requirements
-COPY requirements.txt .
-
-# Install python deps
+# Copy only the requirements first (for Docker caching)
+COPY deploy/docker/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
-COPY ../app /app
+# ------------------------------------------------------------------------------
+# 3. Copy the application code
+# ------------------------------------------------------------------------------
 
-# Entrypoint
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+COPY deploy/neurocbir ./neurocbir
+COPY deploy/configs ./configs
+COPY deploy/data ./data
+COPY deploy/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-CMD ["python", "main.py"]
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# ------------------------------------------------------------------------------
+# 4. Final cleanup and environment metadata
+# ------------------------------------------------------------------------------
+
+ENV PATH="$APP_HOME:$PATH"
+
+# ------------------------------------------------------------------------------
+# 5. Entrypoint
+# ------------------------------------------------------------------------------
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["--help"]
+
