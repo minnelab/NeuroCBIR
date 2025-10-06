@@ -1,0 +1,22 @@
+# >>> USER CONFIGURATION — You can modify these values <<<
+# whole_brain configuration
+# img_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_norm.nii.gz" # Path to MRI image to query
+# seg_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_aparc+aseg.nii.gz" # Path to MRI image to query
+# emb_dataset_path: "data/data_private/whole_brain/projected_embeddings.parquet" # Path to the embedding dataset
+# scope: "whole_brain" # Scope of the query: "whole-brain" or "region"
+# region: "Left-Hippocampus" # Region name — Required if scope == "region"
+# top_k: 25 # Number of top results to retrieve
+# device: "cpu" # Device to use: "cpu" or "cuda"
+
+# region configuration
+img_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_norm.nii.gz" # Path to MRI image to query
+seg_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_aparc+aseg.nii.gz" # Path to MRI image to query
+labels_path: "data/labels.csv"
+bb_path: "data/bounding_boxes.csv"
+emb_dataset_path: "data/data_private/whole_brain/projected_embeddings.parquet" # Path to the embedding dataset
+scope: "region" # Scope of the query: "whole-brain" or "region"
+region: "Left-Hippocampus" # Region name — Required if scope == "region"
+top_k: 25 # Number of top results to retrieve
+device: "cpu" # Device to use: "cpu" or "cuda"
+
+emb_dataset_path: "data/data_private/region_brain/projected_embeddings.parquet" # Path to the embedding dataset

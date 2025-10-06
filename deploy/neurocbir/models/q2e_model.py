@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 from monai.networks.nets.autoencoderkl import AutoencoderKL, Encoder
 from typing import Sequence
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ContrastiveModel(nn.Module):
     def __init__(
@@ -76,25 +79,26 @@ def load_vae_encoder(config, device):
 
     # Load weights
     checkpoint = torch.load(config["vae_ckpt_path"], map_location=device)
-    ckpt_key = config.get("ckpt_key", "autoencoder_state_dict")
-    autoencoder.load_state_dict(checkpoint[ckpt_key])
-    print("Loaded weights of VAE.")
+    autoencoder.load_state_dict(checkpoint["autoencoder_state_dict"])
+    logger.info("Loaded weights of VAE.")
     return autoencoder.encode
 
 def load_cl_projector(config, device):
     def create_encoder(config, device):
-        encoder_params = config["encoder_params"]
+        encoder_params = cl_params["encoder_params"]
         return Encoder(**encoder_params).to(device)
-    encoder = create_encoder(config, device)
+    cl_params = config["cl_params"]
+    encoder = create_encoder(cl_params, device)
     model = ContrastiveModel(
         encoder=encoder,
-        input_shape=config["proj_params"]["input_shape"],
-        projector_dims=config["proj_params"]["projector_dims"],
-        final_dim=config["proj_params"]["final_dim"],
+        input_shape=cl_params["proj_params"]["input_shape"],
+        projector_dims=cl_params["proj_params"]["projector_dims"],
+        final_dim=cl_params["proj_params"]["final_dim"],
         device=device
     ).to(device)
     checkpoint = torch.load(config["cl_ckpt_path"], map_location=device)
     model.load_state_dict(checkpoint['state_dict'])
+    logger.info("Loaded weights of CL.")
     return model
 
 def build_Q2E(config, device):
@@ -103,4 +107,5 @@ def build_Q2E(config, device):
 
     model = Q2EModel(vae_encoder, cl_encoder).to(device)
     model.eval()   # if you only need inference
+    logger.info("Loaded Q2E module.")
     return model
