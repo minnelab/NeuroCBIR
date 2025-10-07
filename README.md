@@ -80,7 +80,7 @@ To run with docker directly:
 ```bash
 docker run --rm \
   --name neurocbir_test \
-  -v /mnt/kth_cbh/fenda/Datasets/OASIS3/oasis3/data:/app/data/data_mnt \
+  -v /mnt/kth_cbh/fenda/Datasets/OASIS3/oasis3:/app/data/data_mnt \
   neurocbir:latest \
   --img_path "/app/data/data_mnt/OAS30005_MR_d0143/mri/align_norm.nii.gz" \
   --seg_path "/app/data/data_mnt/OAS30005_MR_d0143/mri/align_aparc+aseg.nii.gz" \
@@ -88,7 +88,5 @@ docker run --rm \
   --region "Left-Hippocampus" \
   --top_k 30
 ```
-
-
 
 ## Docker-Compose

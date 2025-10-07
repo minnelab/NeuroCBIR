@@ -30,8 +30,6 @@ def main():
     internal_config = load_yaml(args.internal_config)
     config = internal_config["common"]
     config.update(load_yaml(args.user_config))
-    print("HOLA1")
-    print(config.keys())
     if config["scope"] == "whole_brain":
         config.update(internal_config["whole_brain"])
     elif config["scope"] == "region":
