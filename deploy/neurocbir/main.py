@@ -16,6 +16,7 @@ def main():
       
     # Optional overrides
     parser.add_argument('--img_path', help='Path to the preprocessed brain MRI image in .nii.gz, .nii or .mgz format.')
+    parser.add_argument('--seg_path', help='Path to the segmentation file (aparc+aseg.nii) in .nii.gz, .nii or .mgz format.')
     parser.add_argument('--emb_dataset_path', help='Path to the embedding dataset in .parquet format.')
     parser.add_argument("--scope", choices=["whole_brain","region"])
     parser.add_argument("--region", help='Region name (see labels.csv). Example: --scope "region" --region "Left-Hippocampus". Requiered if --scope region is selected.')
