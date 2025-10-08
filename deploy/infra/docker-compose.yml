@@ -1,13 +1,20 @@
-version: "3.9"
-
 services:
-  fastsurfer:
-    image: deepmi/fastsurfer:cpu-v2.4.2
-    container_name: fastsurfer
-    environment:
-      - FS_LICENSE=/data/fs_license.txt
+  freesurfer:
+    build:
+      context: ../../
+      dockerfile: deploy/freesurfer/Dockerfile
+    container_name: freesurfer
+    user: root
     volumes:
-      - ./data:/data
+      - ${OUT_PATH}:/data
+    command: /bin/bash
+
+  ants:
+    image: antsx/ants:latest
+    container_name: ants
+    user: root
+    volumes:
+      - ${OUT_PATH}:/data
     command: /bin/bash
 
   neurocbir:
@@ -15,11 +22,8 @@ services:
       context: ../../
       dockerfile: deploy/docker/Dockerfile
     container_name: neurocbir
-    depends_on:
-      - fastsurfer
+    user: root
     volumes:
-      - ../data:/data
+      - ${OUT_PATH}:/data
       - ../configs:/configs
-      - ../app:/app
-    entrypoint: ["/app/entrypoint.sh"]
-    command: ["--config", "/configs/default.yaml"]
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]

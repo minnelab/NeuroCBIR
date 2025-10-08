@@ -56,6 +56,69 @@ NeuroCBIR/
 
 ## Python package
 
+## Preprocessing
+```bash
+docker compose run --rm freesurfer \
+mri_synthseg \
+    --i "/data/data_private/example/OAS30001_MR_d0129/mri/orig/001.mgz" \
+    --o "/data/data_private/example/OAS30001_MR_d0129/mri/aparc+aseg.mgz" \
+    --fast \
+    --cpu \
+    --threads 8 \
+    --parc
+```
+```bash
+docker compose run --rm ants N4BiasFieldCorrection -i /data/data_private/example/OAS30001_MR_d0129/mri/orig/001.mgz -o /data/data_private/example/OAS30001_MR_d0129/mri/orig_nu.mgz
+```
+
+
+```bash
+mri_synthseg \
+  --i /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz \
+  --o /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/output_synthseg/seg.mgz \
+  --fast \
+  --cpu \
+  --threads 8 \
+  --parc
+```
+
+```bash
+docker run  -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example:/app/data \
+            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/output:/app/output \
+            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/fs_license:/app/fs_license \
+            -it --rm \
+            --user $(id -u):$(id -g) \
+            deepmi/fastsurfer:cpu-v2.4.2 \
+            --seg_only \
+            --no_cereb \
+            --no_hypothal \
+            --t1 /app/data/OAS30001_MR_d0129/mri/orig/001.mgz \
+            --sid OAS30001_MR_d0129 \
+            --sd /app/output \
+            --parallel \
+            --threads 10 \
+            --batch 12 \
+            --fs_license /app/fs_license/license.txt
+```
+
+```bash
+docker run  -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example:/app/data \
+            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/output:/app/output \
+            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/fs_license:/app/fs_license \
+            -it --rm \
+            --entrypoint /bin/bash \
+            --user $(id -u):$(id -g) \
+            deepmi/fastsurfer:cpu-v2.4.2
+```
+
+```bash
+./run_neurocbir.sh \
+    --preprocess \
+    --out_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_1 \
+    --raw_mri_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz \
+    --guid subject1
+```
+
 
 ## Docker
 

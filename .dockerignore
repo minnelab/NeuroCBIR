@@ -19,6 +19,10 @@ venv/
 # *.nii
 # *.nii.gz
 # *.mgz
+# tmp
+# tmp/
+# */tmp/
+# **/tmp/
 
 # Ignore build caches and system stuff
 __pycache__/

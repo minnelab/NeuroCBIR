@@ -20,7 +20,7 @@ echo "📦 Installed packages snapshot:"
 pip list | grep neurocbir || echo "(NeuroCBIR package not found — continuing anyway)"
 
 # Allow overriding the command (e.g., to open a shell)
-if [ "$1" = "bash" ] || [ "$1" = "sh" ]; then
+if [ "$1" = "bash" ] || [ "$1" = "/bin/bash" ] || [ "$1" = "sh" ]; then
     echo "🔧 Opening shell..."
     exec "$@"
 else
