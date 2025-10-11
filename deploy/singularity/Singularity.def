@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: python:3.10-slim
+From: python:3.13-slim
 
 %labels
     Maintainer Félix Nieto-del-Amor <fenda@kth.se>
