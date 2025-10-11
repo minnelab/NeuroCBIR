@@ -5,7 +5,7 @@
 
 # === Base image ===
 # You can switch to a PyTorch image if you want preinstalled torch
-FROM python:3.10-slim
+FROM python:3.13-slim
 
 LABEL maintainer="Félix Nieto-del-Amor <fenda@kth.se>"
 LABEL description="NeuroCBIR: A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI Across Multiple Clinical Cohorts"
