@@ -119,6 +119,13 @@ docker run  -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example:/app/dat
     --guid subject1
 ```
 
+```bash
+./run_neurocbir.sh \
+    --preprocess \
+    --out_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_1 \
+    --raw_mri_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz \
+    --guid subject1
+```
 
 ## Docker
 

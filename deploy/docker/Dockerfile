@@ -14,7 +14,8 @@ LABEL description="NeuroCBIR: A Public Content-Based Image Retrieval System for 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    APP_HOME=/app
+    APP_HOME=/app \
+    PYTHONPATH=/app
 
 WORKDIR $APP_HOME
 
@@ -59,6 +60,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # ------------------------------------------------------------------------------
 
 ENV PATH="$APP_HOME:$PATH"
+WORKDIR "/app"
 
 # ------------------------------------------------------------------------------
 # 5. Entrypoint

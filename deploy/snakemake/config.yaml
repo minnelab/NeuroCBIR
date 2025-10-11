@@ -1,0 +1,18 @@
+outdir: "/home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_2"
+guid: "subject1"
+raw_mri_path: "/home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz"
+fs_license: "/usr/local/freesurfer/.license"
+
+# NeuroCBIR user_config
+user_config: "configs/user_config.yaml"
+internal_config: "configs/internal_config.yaml"
+
+region:
+  - Left-Hippocampus
+  - Right-Hippocampus
+top_k: 30
+device: "cpu"
+emb_dataset_path_whole_brain: "data/data_private/whole_brain/projected_embeddings.parquet" # Path to the embedding dataset
+emb_dataset_path_region: "data/data_private/region_brain/projected_embeddings.parquet" # Path to the embedding dataset
+
+

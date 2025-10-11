@@ -1,0 +1,14 @@
+configfile: "config.yaml"
+
+include: "rules/preprocess.smk"
+include: "rules/cbir.smk"
+
+rule all:
+    input:
+        # whole brain
+        f"{config['outdir']}/{config['guid']}/neurocbir_report/whole_brain/whole_brain.json",
+        # regions
+        *[
+            f"{config['outdir']}/{config['guid']}/neurocbir_report/region/{r}.json"
+            for r in config["region"]
+        ]

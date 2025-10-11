@@ -1,0 +1,99 @@
+# >>> This config is for deployment only — do not modify! <<<
+_meta:
+  readonly: true
+  
+# Common config
+common:
+  seed: 42
+
+# Whole-brain configuration
+whole_brain:
+  vae_ckpt_path: "data/data_private/whole_brain/vae_ckpt.pth"
+  cl_ckpt_path: "data/data_private/whole_brain/cl_ckpt.pth"
+
+  vae_params:
+    spatial_dims: 3
+    in_channels: 1
+    out_channels: 1
+    channels:
+      - 64
+      - 128
+      - 128
+      - 128
+    latent_channels: 8
+    num_res_blocks: 2
+    norm_num_groups: 32
+    norm_eps: 1.0e-6
+    attention_levels:
+      - false
+      - false
+      - false
+      - false
+    with_encoder_nonlocal_attn: false
+    with_decoder_nonlocal_attn: false
+    include_fc: false
+
+  cl_params:
+    encoder_params:
+        spatial_dims: 3
+        in_channels: 8
+        channels: [64, 128, 256]
+        out_channels: 256
+        num_res_blocks: [2, 2, 2]
+        norm_num_groups: 8
+        norm_eps: 1.0e-5
+        attention_levels: [false, false, false]
+        with_nonlocal_attn: false
+        include_fc: false
+
+    proj_params:
+      input_shape: [8, 20, 22, 26]
+      projector_dims: [128]
+      final_dim: 16
+
+# Region brain configuration
+region:
+  vae_ckpt_path: "data/data_private/region_brain/vae_ckpt.pth"
+  cl_ckpt_path: "data/data_private/region_brain/cl_ckpt.pth"
+
+  vae_params:
+    spatial_dims: 3
+    in_channels: 1
+    out_channels: 1
+    channels:
+      - 64
+      - 128
+      - 128
+      - 128
+    latent_channels: 8
+    num_res_blocks: 2
+    norm_num_groups: 32
+    norm_eps: 1.0e-6
+    attention_levels:
+      - false
+      - false
+      - false
+      - false
+    with_encoder_nonlocal_attn: false
+    with_decoder_nonlocal_attn: false
+    include_fc: false
+
+  cl_params:
+    encoder_params:
+        spatial_dims: 3
+        in_channels: 8
+        channels: [64, 128, 256]
+        out_channels: 256
+        num_res_blocks: [2, 2, 2]
+        norm_num_groups: 8
+        norm_eps: 1.0e-5
+        attention_levels: [false, false, false]
+        with_nonlocal_attn: false
+        include_fc: false
+
+    proj_params:
+      input_shape: [8, 8, 8, 8]
+      projector_dims: [128]
+      final_dim: 32
+
+  

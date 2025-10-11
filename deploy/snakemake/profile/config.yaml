@@ -1,0 +1,4 @@
+# directory: "/home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/deploy"
+cores: 4
+singularity-args: "--home /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR \
+                   --bind /usr/local/freesurfer/.license:/usr/local/freesurfer/.license"

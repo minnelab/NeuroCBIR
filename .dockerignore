@@ -30,6 +30,7 @@ __pycache__/
 *.pyo
 *.tmp
 *.log
+*.sif
 .DS_Store
 
 # Git and IDE
@@ -44,3 +45,4 @@ deploy/docker/.cache/
 
 # Exclude other folders
 dev
+
