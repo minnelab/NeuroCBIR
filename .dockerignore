@@ -33,6 +33,10 @@ __pycache__/
 *.sif
 .DS_Store
 
+# snakemake
+**/.snakemake/
+**/.keras/
+
 # Git and IDE
 .git/
 .gitignore

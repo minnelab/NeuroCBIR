@@ -72,23 +72,23 @@ class Q2EModel(nn.Module):
             out = self.cl_encoder(z_mu)
         return out.view(out.size(0), -1)  # Flatten except batch dimension
 
-def load_vae_encoder(config, device):
+def load_vae_encoder(vae_params: dict, vae_ckpt_path: str, device: str):
     # Set up VAE
-    vae_params = config["vae_params"]
     autoencoder = AutoencoderKL(**vae_params).to(device)
 
     # Load weights
-    checkpoint = torch.load(config["vae_ckpt_path"], map_location=device)
+    checkpoint = torch.load(vae_ckpt_path, map_location=device)
     autoencoder.load_state_dict(checkpoint["autoencoder_state_dict"])
     logger.info("Loaded weights of VAE.")
     return autoencoder.encode
 
-def load_cl_projector(config, device):
-    def create_encoder(config, device):
-        encoder_params = cl_params["encoder_params"]
+def load_cl_projector(cl_params: dict, cl_ckpt_path: str, device: str):
+    def create_encoder(params: dict, device: str):
+        encoder_params = params["encoder_params"]
         return Encoder(**encoder_params).to(device)
-    cl_params = config["cl_params"]
+
     encoder = create_encoder(cl_params, device)
+
     model = ContrastiveModel(
         encoder=encoder,
         input_shape=cl_params["proj_params"]["input_shape"],
@@ -96,14 +96,15 @@ def load_cl_projector(config, device):
         final_dim=cl_params["proj_params"]["final_dim"],
         device=device
     ).to(device)
-    checkpoint = torch.load(config["cl_ckpt_path"], map_location=device)
+
+    checkpoint = torch.load(cl_ckpt_path, map_location=device)
     model.load_state_dict(checkpoint['state_dict'])
     logger.info("Loaded weights of CL.")
     return model
 
-def build_Q2E(config, device):
-    vae_encoder = load_vae_encoder(config, device)   # returns autoencoder.encode
-    cl_encoder = load_cl_projector(config, device)   # returns ContrastiveModel
+def build_Q2E(vae_params: dict, vae_ckpt_path: str, cl_params: dict, cl_ckpt_path: str, device: str):
+    vae_encoder = load_vae_encoder(vae_params, vae_ckpt_path, device)
+    cl_encoder = load_cl_projector(cl_params, cl_ckpt_path, device)
 
     model = Q2EModel(vae_encoder, cl_encoder).to(device)
     model.eval()   # if you only need inference

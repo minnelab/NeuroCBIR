@@ -3,7 +3,7 @@ import logging
 import os
 import json
 from neurocbir.runners import cbir_region, cbir_whole_brain
-from neurocbir.utils import load_yaml
+from neurocbir.utils import load_yaml 
 import neurocbir
 
 
@@ -64,9 +64,9 @@ def main():
     print("="*70 + "\n")
     
     if config["scope"] == "whole_brain":
-        cbir_whole_brain.main(config)
+        cbir_whole_brain(**config)
     elif config["scope"] == "region":
-        cbir_region.main(config)
+        cbir_region(**config)
         
 if __name__ == "__main__":
     main()

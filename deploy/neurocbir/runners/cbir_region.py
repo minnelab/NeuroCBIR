@@ -12,17 +12,50 @@ import neurocbir
 
 logger = logging.getLogger(__name__)
 
-def main(config):
+def main(
+        img_path: str,
+        seg_path: str,
+        emb_dataset_path: str,
+        labels_path: str,
+        bb_path: str,
+        region: str,
+        vae_params: dict,
+        vae_ckpt_path: str,
+        cl_params: dict,
+        cl_ckpt_path: str,
+        o_path: str = None,
+        top_k: int = 25,
+        device: str = "cpu",
+        **kwargs, # Capture unused config keys
+        ):
+    """
+    Runs the Content-Based Image Retrieval (CBIR) pipeline for specific brain regions.
+
+    Args:
+        img_path (str): Path to the query brain image.
+        seg_path (str): Path to the query segmentation image.
+        emb_dataset_path (str): Path to the embedding dataset (Parquet).
+        labels_path (str): Path to the CSV file with region labels.
+        bb_path (str): Path to the CSV file with region bounding boxes.
+        region (str): The specific brain region to query.
+        vae_params (dict): Parameters for the VAE model.
+        vae_ckpt_path (str): Path to the VAE checkpoint.
+        cl_params (dict): Parameters for the contrastive learning model.
+        cl_ckpt_path (str): Path to the contrastive learning checkpoint.
+        o_path (str, optional): Directory to save the output JSON file. Defaults to None.
+        top_k (int, optional): Number of top results to retrieve. Defaults to 25.
+        device (str, optional): Device for computation (e.g., "cpu"). Defaults to "cpu".
+        **kwargs: Catches any other unused arguments from the config.
+    """
     logger.info("CBIR pipeline: region")
     
     # Setup
-    device = config["device"]
-    q2e_module = build_Q2E(config, device) # Load 
+    q2e_module = build_Q2E(vae_params, vae_ckpt_path, cl_params, cl_ckpt_path, device)
     
     # Load dataset
     # Load real features from parquet
     logger.info("Loading embedding dataset.")
-    embs_dataset = pd.read_parquet(config["emb_dataset_path"])
+    embs_dataset = pd.read_parquet(emb_dataset_path)
     embs_dataset["LabelName"] = embs_dataset["LabelName"].astype(str)
     embs_dataset["GUID"] = embs_dataset["GUID"].astype(str) # Ensure GUID is string  
     # Convert embedding columns into a single 'features' column of vectors
@@ -31,15 +64,15 @@ def main(config):
     # Drop the old embedding columns
     embs_dataset = embs_dataset[["GUID", "LabelName", "features"]]
     # Select 
-    embs_subset = embs_dataset.query(f"LabelName == '{config['region']}'").reset_index(drop=True)
+    embs_subset = embs_dataset.query(f"LabelName == '{region}'").reset_index(drop=True)
     
     # Load labels and bounding boxes for cortical/subcortical structures
-    labels_df = pd.read_csv(config["labels_path"])
-    bb_df = pd.read_csv(config["bb_path"])
+    labels_df = pd.read_csv(labels_path)
+    bb_df = pd.read_csv(bb_path)
     labels_bb_df = pd.merge(labels_df, bb_df, on="LabelName", how="inner") # Merge on the 'GUID' column
     
     # Load whole-brain image query
-    i_q = load_region(config["img_path"], config["seg_path"], labels_bb_df, config["region"])
+    i_q = load_region(img_path, seg_path, labels_bb_df, region)
     i_q = torch.from_numpy(i_q).float().unsqueeze(0).unsqueeze(0).to(device)
 
     # Get features of the query
@@ -48,12 +81,12 @@ def main(config):
     
     # Top-k retrieval
     logger.info(f"Computing similarities between query {z_q.shape} and dataset {embs_dataset.shape}.")
-    top_k_retrieved = retrieve_topk_for_query(z_q, embs_subset, top_k=config["top_k"])
-    logger.info(f"Ranking and retrieving Top-{config['top_k']}.")
+    top_k_retrieved = retrieve_topk_for_query(z_q, embs_subset, top_k=top_k)
+    logger.info(f"Ranking and retrieving Top-{top_k}.")
     
     # Fancy print
     print("\n" + "="*50)
-    print(f"Top-{config['top_k']} Retrieval Results ".center(50, '='))
+    print(f"Top-{top_k} Retrieval Results ".center(50, '='))
     print("="*50 + "\n")
 
     # Create table data
@@ -67,11 +100,10 @@ def main(config):
     print("\n" + "="*50 + "\n")
     
     # Save to JSON file
-    o_path = config['o_path']
     if o_path:
         if not os.path.exists(o_path):
             os.makedirs(o_path)
-        output_file = os.path.join(o_path, f"{config['region']}.json")
+        output_file = os.path.join(o_path, f"{region}.json")
         with open(output_file, "w") as f:
             json.dump(table_data, f, indent=4)
         print(f"Saved in: {output_file}")
@@ -116,4 +148,4 @@ if __name__ == "__main__":
         if value is not None:
             config[key] = value
     
-    main(config)
+    main(**config)
