@@ -1,16 +1,11 @@
 #!/bin/bash
 set -e
 
-# Color codes for better output
-CYAN="\033[36m"
-RED="\033[31m"
-YELLOW="\033[33m"
-RESET="\033[0m"
-
 # === CONFIGURATION ===
 DOCKER_IMAGE_NAME="neurocbir"
 DOCKER_IMAGE_TAG="latest"
 DOCKERFILE_PATH="deploy/docker/Dockerfile"
+FS_LICENSE_PATH="/usr/local/freesurfer/.license"
 
 # Define required files and directories that the user must download manually.
 REQUIRED_PATHS=(
@@ -21,6 +16,12 @@ REQUIRED_PATHS=(
     "deploy/data/data_private/whole_brain/vae_ckpt.pth"
     "deploy/data/data_private/whole_brain/projected_embeddings.parquet"
 )
+
+# Color codes for better output
+CYAN="\033[36m"
+RED="\033[31m"
+YELLOW="\033[33m"
+RESET="\033[0m"
 
 # === PRE-BUILD CHECK ===
 echo -e "${CYAN}🔍 Verifying required data files...${RESET}"
@@ -63,3 +64,10 @@ docker build -t "${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" -f "${DOCKERFILE_PATH
 echo -e "\n${CYAN}✅ Docker image built successfully!${RESET}"
 echo -e "${CYAN}You can now run the container, for example:${RESET}"
 echo -e "   docker run --rm ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --help"
+
+# === DOCKER COMPOSE INSTRUCTIONS ===
+echo -e "\n${CYAN}📦 Preparing preprocessing containers (FreeSurfer, ANTs)...${RESET}"
+echo -e "${YELLOW}This will download the necessary Docker images for preprocessing.${RESET}"
+docker compose -f deploy/infra/docker-compose.yml pull
+echo -e "${CYAN}✅ Preprocessing containers are ready.${RESET}"
+echo -e "You can now use 'docker compose run' for preprocessing tasks."
