@@ -32,7 +32,6 @@ setup(
     package_data={
         'neurocbir': [
             'configs/*.yaml',
-            'data/*.csv',
         ],
     },
     entry_points={
