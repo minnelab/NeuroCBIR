@@ -80,11 +80,12 @@ def main(
     z_q = q2e_module(i_q)
     
     # Top-k retrieval
-    logger.info(f"Computing similarities between query {z_q.shape} and dataset {embs_dataset.shape}.")
+    logger.info(f"Computing similarities between query {list(z_q.shape)} and dataset {list(embs_dataset.features.values.shape)}.")
     top_k_retrieved = retrieve_topk_for_query(z_q, embs_subset, top_k=top_k)
     logger.info(f"Ranking and retrieving Top-{top_k}.")
     
     # Fancy print
+    print()
     print("\n" + "="*50)
     print(f"Top-{top_k} Retrieval Results ".center(50, '='))
     print("="*50 + "\n")
@@ -98,6 +99,8 @@ def main(
     headers = ["Rank", "GUID"]
     print(tabulate([[d["rank"], d["guid"]] for d in table_data[0:25]], headers=headers, tablefmt="fancy_grid"))
     print("\n" + "="*50 + "\n")
+    print()
+    print("In terminal only a max of the top-25 are shown. ") 
     
     # Save to JSON file
     if o_path:
