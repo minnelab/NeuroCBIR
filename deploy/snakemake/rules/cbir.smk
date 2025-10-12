@@ -19,7 +19,6 @@ rule run_neurocbir_whole_brain:
     shell:
         """
         cd /app
-        ls /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_2/subject1/mri/
         python -m neurocbir \
         --img_path {input.brain} \
         --scope {params.scope} \
