@@ -72,7 +72,6 @@ def main(
     # Top-k retrieval
     logger.info(f"Computing similarities between query {list(z_q.shape)} and dataset {list(embs_dataset.features.values.shape)}.")
     top_k_retrieved = retrieve_topk_for_query(z_q, embs_dataset, top_k=top_k)
-    logger.info(f"Ranking and retrieving Top-{top_k}.")
   
     # Fancy print
     print()
