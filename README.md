@@ -1,162 +1,136 @@
-# NeuroCBIR — Docker Setup & Usage Guide
+# NeuroCBIR
 
-This document summarizes the necessary commands to build and run **NeuroCBIR** using Docker and `docker-compose`.
+A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI Across Multiple Clinical Cohorts.
 
 ---
 
-## 📁 Project Structure
+----
+## 📖 Overview
 
+This project provides a suite of tools for content-based image retrieval (CBIR) on brain MRI scans. It can be used for both whole-brain and region-specific queries. The project is designed to be flexible and can be used in several ways:
 
+1.  **As a Python Package**: For easy integration into other Python projects and direct command-line use.
+2.  **With Docker**: For a portable, containerized environment that encapsulates all dependencies.
+3.  **With Snakemake & Singularity**: For running reproducible, end-to-end pipelines, including preprocessing of raw MRI data.
 
 ---
 
 ## 🛠 Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) (latest stable version)
-- [Docker Compose](https://docs.docker.com/compose/install/) (latest stable version)
-- Ensure `.dockerignore` exists in the project root to optimize builds
-- Ensure your the data directory looks like that:
+Before you begin, ensure you have the following installed:
 
+- **Git**: To clone the repository.
+- **Python**: Version 3.10 or higher.
+- **Docker**: For the Docker-based workflow.
+- **Apptainer (or Singularity)**: For the Snakemake-based workflow.
+
+### Required Data
+
+This project requires pre-trained model weights and embedding datasets, which must be downloaded manually. After cloning the repository, you must place these files into the `deploy/data/data_private/` directory.
+
+The expected directory structure is:
 ```
-NeuroCBIR/
-├── deploy/
-│   ├── configs/
-│   │   └── ...
-│   ├── data/
-│   │   ├── data_private
-│   │   │   ├── example
-│   │   │   │   └── OAS30001_MR_d0129
-│   │   │   │       └── mri
-│   │   │   │           ├── align_aparc+aseg.nii.gz
-│   │   │   │           └── align_norm.nii.gz
-│   │   │   ├── region_brain
-│   │   │   │   ├── cl_ckpt.pth
-│   │   │   │   ├── projected_embeddings.parquet
-│   │   │   │   ├── README.md
-│   │   │   │   └── vae_ckpt.pth
-│   │   │   └── whole_brain
-│   │   │       ├── cl_ckpt.pth
-│   │   │       ├── projected_embeddings.parquet
-│   │   │       ├── README.md
-│   │   │       └── vae_ckpt.pth
-│   │   ├── bounding_boxes.csv
-│   │   └── labels.csv
-│   ├── docker/
-│   │   └── ...
-│   ├── infra/
-│   │   └── ...
-│   └── neurocbir/
-│       └── ...
-├── .dockerignore
-├── .gitignore
-└── README.md
+deploy/data/
+└── data_private/
+    ├── region_brain/
+    │   ├── cl_ckpt.pth
+    │   ├── projected_embeddings.parquet
+    │   └── vae_ckpt.pth
+    └── whole_brain/
+        ├── cl_ckpt.pth
+        ├── projected_embeddings.parquet
+        └── vae_ckpt.pth
 ```
 
 ---
 
-## Python package
+## 🚀 Installation and Usage
 
-## Preprocessing
+First, clone the repository:
 ```bash
-docker compose run --rm freesurfer \
-mri_synthseg \
-    --i "/data/data_private/example/OAS30001_MR_d0129/mri/orig/001.mgz" \
-    --o "/data/data_private/example/OAS30001_MR_d0129/mri/aparc+aseg.mgz" \
-    --fast \
-    --cpu \
-    --threads 8 \
-    --parc
-```
-```bash
-docker compose run --rm ants N4BiasFieldCorrection -i /data/data_private/example/OAS30001_MR_d0129/mri/orig/001.mgz -o /data/data_private/example/OAS30001_MR_d0129/mri/orig_nu.mgz
-```
-
-
-```bash
-mri_synthseg \
-  --i /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz \
-  --o /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/output_synthseg/seg.mgz \
-  --fast \
-  --cpu \
-  --threads 8 \
-  --parc
-```
-
-```bash
-docker run  -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example:/app/data \
-            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/output:/app/output \
-            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/fs_license:/app/fs_license \
-            -it --rm \
-            --user $(id -u):$(id -g) \
-            deepmi/fastsurfer:cpu-v2.4.2 \
-            --seg_only \
-            --no_cereb \
-            --no_hypothal \
-            --t1 /app/data/OAS30001_MR_d0129/mri/orig/001.mgz \
-            --sid OAS30001_MR_d0129 \
-            --sd /app/output \
-            --parallel \
-            --threads 10 \
-            --batch 12 \
-            --fs_license /app/fs_license/license.txt
-```
-
-```bash
-docker run  -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example:/app/data \
-            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/output:/app/output \
-            -v /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/fs_license:/app/fs_license \
-            -it --rm \
-            --entrypoint /bin/bash \
-            --user $(id -u):$(id -g) \
-            deepmi/fastsurfer:cpu-v2.4.2
-```
-
-```bash
-./run_neurocbir.sh \
-    --preprocess \
-    --out_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_1 \
-    --raw_mri_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz \
-    --guid subject1
-```
-
-```bash
-./run_neurocbir.sh \
-    --preprocess \
-    --out_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_1 \
-    --raw_mri_path /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz \
-    --guid subject1
-```
-
-## Docker
-
-If you haven’t cloned NeuroCBIR yet:
-```bash
-git clone git@github.com:feniede/NeuroCBIR.git
+git clone https://github.com/feniede/NeuroCBIR.git
 cd NeuroCBIR
 ```
-In NeuroCBIR folder, build the docker image:
-```bash
-docker build -t neurocbir:latest -f deploy/docker/Dockerfile .
-```
-To run the example:
-```bash
-docker run --rm neurocbir:latest
-```
-To enter bash session:
-```bash
-docker run -it --rm neurocbir:latest bash
-```
-To run with docker directly:
-```bash
-docker run --rm \
-  --name neurocbir_test \
-  -v /mnt/kth_cbh/fenda/Datasets/OASIS3/oasis3:/app/data/data_mnt \
-  neurocbir:latest \
-  --img_path "/app/data/data_mnt/OAS30005_MR_d0143/mri/align_norm.nii.gz" \
-  --seg_path "/app/data/data_mnt/OAS30005_MR_d0143/mri/align_aparc+aseg.nii.gz" \
-  --scope "region" \
-  --region "Left-Hippocampus" \
-  --top_k 30
-```
 
-## Docker-Compose
+Choose one of the following methods to run the application.
+
+### Option 1: As a Python Package
+
+This method installs `neurocbir` as a command-line tool in your Python environment. It's ideal for quick queries and integration into other scripts.
+
+1.  **Navigate to the package directory:**
+    ```bash
+    cd deploy/neurocbir
+    ```
+
+2.  **Install the package:**
+    ```bash
+    pip install .
+    ```
+
+3.  **Run a query:**
+    Once installed, you can use the `neurocbir` command from anywhere.
+
+    *   **Whole-Brain Retrieval:**
+        ```bash
+        neurocbir --scope whole_brain --img_path /path/to/your/brain_image.nii.gz
+        ```
+    *   **Region-Specific Retrieval:**
+        ```bash
+        neurocbir --scope region --region "Left-Hippocampus" --img_path /path/to/your/brain_image.nii.gz --seg_path /path/to/your/segmentation.nii.gz
+        ```
+
+### Option 2: Using Docker
+
+This method provides a self-contained environment with all dependencies included. It's recommended for ensuring consistent execution across different machines.
+
+1.  **Build the Docker image:**
+    Use the provided script, which verifies that all required data is present before building.
+    ```bash
+    chmod +x build_docker.sh
+    ./build_docker.sh
+    ```
+
+2.  **Run a query:**
+    Use `docker run` to execute a command inside the container. You must mount any external data directories (like your subject data) into the container.
+
+    ```bash
+    docker run --rm \
+      -v /path/to/your/subjects:/data/subjects \
+      neurocbir:latest \
+        --scope region \
+        --region "Left-Hippocampus" \
+        --img_path /data/subjects/OAS30005_MR_d0143/mri/align_norm.nii.gz \
+        --seg_path /data/subjects/OAS30005_MR_d0143/mri/align_aparc+aseg.nii.gz
+    ```
+
+### Option 3: Using Snakemake with Singularity
+
+This is the most comprehensive method, designed for running reproducible, end-to-end pipelines that include preprocessing of raw data.
+
+1.  **Run the setup script:**
+    This script will create a Python virtual environment, install Snakemake, and build the required Singularity container.
+    ```bash
+    chmod +x setup.sh
+    ./setup.sh
+    ```
+
+2.  **Configure the pipeline:**
+    Edit the `deploy/snakemake/config.yaml` file to specify your input data (`raw_mri_path`), output directory (`outdir`), and other parameters.
+
+3.  **Run the pipeline:**
+    Execute the pipeline using the provided run script.
+    ```bash
+    chmod +x run_snakemake.sh
+    ./run_snakemake.sh
+    ```
+    This will automatically handle preprocessing, feature extraction, and retrieval according to your configuration.
+
+---
+
+## 🧠 Preprocessing
+
+The Snakemake pipeline (Option 3) is the recommended method for preprocessing raw MRI data. It provides a structured and reproducible workflow that handles all necessary steps, from segmentation to normalization.
+
+To run preprocessing, simply configure the `raw_mri_path` in `deploy/snakemake/config.yaml` and execute the pipeline as described above.
+
