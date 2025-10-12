@@ -2,3 +2,6 @@
 cores: 4
 singularity-args: "--home /home/fenda/Work/202501__NeuroCBIR/NeuroCBIR \
                    --bind /usr/local/freesurfer/.license:/usr/local/freesurfer/.license"
+# This tells Snakemake to look for container images in the 'singularity'
+# directory relative to the Snakefile.
+singularity-prefix: "singularity"

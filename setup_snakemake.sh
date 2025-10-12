@@ -6,12 +6,25 @@ set -euo pipefail
 # -----------------------------
 
 # Configuration
-SETUP_DIR="setup"
-SINGULARITY_DIR="$SETUP_DIR/singularity_images"
-NEUROCBIR_DOCKER_IMAGE="neurocbir:latest"
-NEUROCBIR_SIF="$SINGULARITY_DIR/neurocbir.sif"
+SETUP_DIR="deploy/snakemake"
 
-# Other container builds (optional)
+# Python virtual environment
+VENV_DIR="$SETUP_DIR/venv"
+SNK_VERSION="9.12.0"
+
+# Docker configuration (for building Singularity images)
+DOCKERFILE_PATH="deploy/docker/Dockerfile"
+DOCKER_IMAGE_NAME="neurocbir"
+DOCKER_IMAGE_TAG="latest"
+
+# Singularity configuration
+SINGULARITY_DIR="$SETUP_DIR/singularity"
+NEUROCBIR_DOCKERFILE="deploy/docker/Dockerfile"
+FREESURFER_DOCKER_IMAGE="freesurfer/freesurfer:7.4.1"
+ANTS_DOCKER_IMAGE="antsx/ants:latest"
+
+# SIF file paths
+NEUROCBIR_SIF="$SINGULARITY_DIR/neurocbir.sif"
 FREESURFER_SIF="$SINGULARITY_DIR/freesurfer.sif"
 ANTS_SIF="$SINGULARITY_DIR/ants.sif"
 
@@ -34,7 +47,6 @@ echo "✅ Python version OK ($PYTHON_VERSION)"
 # -----------------------------
 # 2. Create Python virtual environment
 # -----------------------------
-VENV_DIR="$SETUP_DIR/snakemake_venv"
 mkdir -p "$SETUP_DIR"
 
 if [[ ! -d "$VENV_DIR" ]]; then
@@ -42,18 +54,15 @@ if [[ ! -d "$VENV_DIR" ]]; then
     python3 -m venv "$VENV_DIR"
 fi
 
-# Activate venv
-source "$VENV_DIR/bin/activate"
-
 # Upgrade pip
-pip install --upgrade pip setuptools wheel
+echo "Upgrading pip in virtual environment..."
+"$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel
 
 # -----------------------------
 # 3. Install Snakemake
 # -----------------------------
-SNK_VERSION="9.12.0"
 echo "Installing Snakemake $SNK_VERSION..."
-pip install "snakemake==$SNK_VERSION"
+"$VENV_DIR/bin/pip" install "snakemake==$SNK_VERSION"
 
 # -----------------------------
 # 4. Check Apptainer/Singularity
@@ -70,20 +79,20 @@ echo "✅ Found container runtime: $APPTAINER_CMD"
 # -----------------------------
 mkdir -p "$SINGULARITY_DIR"
 
-echo "Building NeuroCBIR Singularity image..."
-$APPTAINER_CMD build --fakeroot "$NEUROCBIR_SIF" "deploy/singularity/Singularity.def"
+echo "Building temporary NeuroCBIR Docker image..."
+docker build -t "${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" -f "${DOCKERFILE_PATH}" .
 
-# Optional: build Freesurfer and ANTs containers
-# Adjust paths or Docker images as needed
-if [[ -f "deploy/singularity/freesurfer.def" ]]; then
-    echo "Building Freesurfer Singularity image..."
-    $APPTAINER_CMD build --fakeroot "$FREESURFER_SIF" "deploy/singularity/freesurfer.def"
-fi
+echo "Building NeuroCBIR Singularity image from local Docker image..."
+$APPTAINER_CMD build --fakeroot "$NEUROCBIR_SIF" "docker-daemon://${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
 
-if [[ -f "deploy/singularity/ants.def" ]]; then
-    echo "Building ANTs Singularity image..."
-    $APPTAINER_CMD build --fakeroot "$ANTS_SIF" "deploy/singularity/ants.def"
-fi
+
+echo "Building Freesurfer Singularity image from Docker Hub..."
+# Using the official FreeSurfer image
+$APPTAINER_CMD build --fakeroot "$FREESURFER_SIF" "docker://$FREESURFER_DOCKER_IMAGE"
+
+echo "Building ANTs Singularity image from Docker Hub..."
+# Using a common ANTs image; adjust if you use a different one
+$APPTAINER_CMD build --fakeroot "$ANTS_SIF" "docker://$ANTS_DOCKER_IMAGE"
 
 # -----------------------------
 # 6. Final message
@@ -91,4 +100,4 @@ fi
 echo "✅ Setup complete!"
 echo "Virtual environment: $VENV_DIR (activate with 'source $VENV_DIR/bin/activate')"
 echo "Singularity images stored in $SINGULARITY_DIR"
-echo "Run pipeline using: source $VENV_DIR/bin/activate && snakemake --use-singularity --profile profile"
+echo "Run pipeline using: source $VENV_DIR/bin/activate && ./run_snakemake.sh"
