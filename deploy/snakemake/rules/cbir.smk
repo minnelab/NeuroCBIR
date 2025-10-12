@@ -4,7 +4,7 @@ rule run_neurocbir_whole_brain:
     output:
         result="{outdir}/{guid}/neurocbir_report/whole_brain/whole_brain.json"
     container:
-        "neurocbir.sif"
+        "singularity/neurocbir.sif"
     params:
         # emb_dataset_path=lambda w: config.get("emb_dataset_path", ""),
         # region=lambda w: config.get("region", ""),
@@ -36,7 +36,7 @@ rule run_neurocbir_region:
     output:
         result="{outdir}/{guid}/neurocbir_report/region/{region}.json"
     container:
-        "neurocbir.sif"
+        "singularity/neurocbir.sif"
     params:
         scope="region",
         emb_dataset_path=lambda w: config.get("emb_dataset_path_region", ""),

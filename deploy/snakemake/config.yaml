@@ -1,4 +1,4 @@
-outdir: "/home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_2"
+outdir: "/home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/test_3"
 guid: "subject1"
 raw_mri_path: "/home/fenda/Work/202501__NeuroCBIR/NeuroCBIR/tmp/example/OAS30001_MR_d0129/mri/orig/001.mgz"
 fs_license: "/usr/local/freesurfer/.license"

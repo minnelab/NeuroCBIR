@@ -22,7 +22,7 @@ rule conform_image:
     output:
         "{outdir}/{guid}/mri/orig_conform.mgz"
     container:
-        "docker://freesurfer/freesurfer:7.4.1"
+        "singularity/freesurfer.sif"
     shell:
         """
         export FREESURFER_HOME=/usr/local/freesurfer
@@ -36,7 +36,7 @@ rule bias_correction:
     output:
         "{outdir}/{guid}/mri/orig_nu.mgz"
     container:
-        "docker://antsx/ants:latest"
+        "singularity/ants.sif"
     shell:
         """
         N4BiasFieldCorrection -i {input} -o {output}
@@ -48,7 +48,7 @@ rule synthseg_segmentation:
     output:
         "{outdir}/{guid}/mri/aparc+aseg.mgz"
     container:
-        "docker://freesurfer/freesurfer:7.4.1"
+        "singularity/freesurfer.sif"
     shell:
         """
         mri_synthseg --i {input} --o {output} --robust --cpu --threads 8 --parc
@@ -60,7 +60,7 @@ rule talairach_transform:
     output:
         "{outdir}/{guid}/mri/transforms/talairach.xfm.lta"
     container:
-        "docker://freesurfer/freesurfer:7.4.1"
+        "singularity/freesurfer.sif"
     shell:
         """
         mkdir -p {wildcards.outdir}/{wildcards.guid}/mri/transforms
@@ -77,7 +77,7 @@ rule brain_extraction:
         brain="{outdir}/{guid}/mri/brain.mgz",
         mask="{outdir}/{guid}/mri/mask.mgz"
     container:
-        "docker://freesurfer/freesurfer:7.4.1"
+        "singularity/freesurfer.sif"
     shell:
         """
         mri_synthstrip --i {input} --o {output.brain} --mask {output.mask}
@@ -90,7 +90,7 @@ rule brain_vol2vol:
     output:
         "{outdir}/{guid}/mri/brain_talairach.nii.gz"
     container:
-        "docker://freesurfer/freesurfer:7.4.1"
+        "singularity/freesurfer.sif"
     shell:
         """
         mri_vol2vol --mov {input.brain} \
@@ -106,7 +106,7 @@ rule seg_vol2vol:
     output:
         "{outdir}/{guid}/mri/aparc+aseg_talairach.nii.gz"
     container:
-        "docker://freesurfer/freesurfer:7.4.1"
+        "singularity/freesurfer.sif"
     shell:
         """
         mri_vol2vol --mov {input.seg} \

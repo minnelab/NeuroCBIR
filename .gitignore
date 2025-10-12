@@ -36,6 +36,7 @@ var/
 .installed.cfg
 *.egg
 *.sif
+*.simg
 
 venv/
 tmp/
