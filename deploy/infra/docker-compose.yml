@@ -7,7 +7,7 @@ services:
     user: root
     volumes:
       - ${OUT_PATH}:/data
-      - $(FS_LICENSE_PATH):/usr/local/freesurfer/.license
+      - $FS_LICENSE_PATH:/usr/local/freesurfer/.license
     command: /bin/bash
 
   ants:

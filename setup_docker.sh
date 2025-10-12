@@ -5,7 +5,6 @@ set -e
 DOCKER_IMAGE_NAME="neurocbir"
 DOCKER_IMAGE_TAG="latest"
 DOCKERFILE_PATH="deploy/docker/Dockerfile"
-FS_LICENSE_PATH="/usr/local/freesurfer/.license"
 
 # Define required files and directories that the user must download manually.
 REQUIRED_PATHS=(

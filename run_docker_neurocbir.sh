@@ -9,6 +9,9 @@ RESET="\033[0m"
 START_TIME=$(date +%s)
 
 # === DEFAULTS ===
+# For freesurfer container
+FS_LICENSE_PATH="/usr/local/freesurfer/.license"
+
 # For this wrapper
 PREPROCESS=false
 RAW_MRI_PATH="" # Need to define if --preprocess
@@ -48,7 +51,10 @@ while [[ "$#" -gt 0 ]]; do
     esac
     shift
 done
+
+# Export variables for docker-compose
 export OUT_PATH="$OUT_PATH"
+export FS_LICENSE_PATH="$FS_LICENSE_PATH"
 
 # === VALIDATION ===
 if [[ -z "$OUT_PATH" || -z "$GUID" ]]; then
@@ -76,7 +82,7 @@ if [[ "$PREPROCESS" == true ]]; then
 
     echo -e "${CYAN}Step 1 — preprocessing${RESET}"
     # Assuming preprocess.sh uses docker-compose and OUT_PATH is mounted as /data
-    # ./preprocess.sh "/data/${GUID}/mri/orig/001.mgz" "/data" "$GUID"
+    ./preprocess.sh "/data/${GUID}/mri/orig/001.mgz" "/data" "$GUID"
 
     # After preprocessing, set the paths for the neurocbir step
     NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
