@@ -14,7 +14,7 @@ if [[ -z "$INPUT_IMAGE" || -z "$OUTPUT_DIR" || -z "$GUID" ]]; then
     exit 1
 fi
 
-cd ./deploy/infra/
+cd ./deploy/docker/
 
 docker compose run --rm freesurfer \
     mkdir -p "${OUTPUT_DIR}"

@@ -82,7 +82,7 @@ if [[ "$PREPROCESS" == true ]]; then
 
     echo -e "${CYAN}Step 1 — preprocessing${RESET}"
     # Assuming preprocess.sh uses docker-compose and OUT_PATH is mounted as /data
-    ./preprocess.sh "/data/${GUID}/mri/orig/001.mgz" "/data" "$GUID"
+    deploy/docker/preprocess.sh "/data/${GUID}/mri/orig/001.mgz" "/data" "$GUID"
 
     # After preprocessing, set the paths for the neurocbir step
     NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
@@ -109,7 +109,7 @@ echo -e "${CYAN}Step 2 — neurocbir${RESET}"
 [[ -n "$O_PATH" ]] && NEUROCBIR_ARGS+=(--o_path "/data/${GUID}/output") # Map o_path inside container
 
 # Run NeuroCBIR container with all arguments
-docker compose -f deploy/infra/docker-compose.yml run --rm neurocbir "${NEUROCBIR_ARGS[@]}"
+docker compose -f deploy/docker/docker-compose.yml run --rm neurocbir "${NEUROCBIR_ARGS[@]}"
 
 # === TIMER ===
 END_TIME=$(date +%s)

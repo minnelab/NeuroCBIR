@@ -1,8 +1,6 @@
 services:
   freesurfer:
-    build:
-      context: ../../
-      dockerfile: freesurfer/freesurfer:7.4.1
+    image: freesurfer/freesurfer:7.4.1
     container_name: freesurfer
     user: root
     volumes:
