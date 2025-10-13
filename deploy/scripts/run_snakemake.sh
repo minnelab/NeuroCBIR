@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e  # Exit on any error
+
+# Source the banner function
+source "$(dirname "$0")/banner.sh"
 REPO_DIR=$(pwd) # Repository root directory
 
 # Check if inside NeuroCBIR repo
@@ -41,6 +44,28 @@ while [[ "$#" -gt 0 ]]; do
         --region) SNAKEMAKE_CONFIG_OVERRIDES+=("--config" "region=$2"); shift ;;
         --top_k) SNAKEMAKE_CONFIG_OVERRIDES+=("--config" "top_k=$2"); shift ;;
         --device) SNAKEMAKE_CONFIG_OVERRIDES+=("--config" "device=$2"); shift ;;
+        # Help
+        -h|--help)
+            print_banner
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "Wrapper script to run the NeuroCBIR Snakemake pipeline."
+            echo ""
+            echo "Pipeline Execution Options:"
+            echo "  --config <file>        Path to Snakemake config file (default: $SNAKEMAKE_CONFIG_DEFAULT)"
+            echo "  --cores <num>          Number of CPU cores for Snakemake to use (default: $CORES_DEFAULT)"
+            echo "  --fs-license <file>    Path to FreeSurfer license file (default: $FS_LICENSE_PATH_DEFAULT)"
+            echo "  -h, --help             Display this help message and exit"
+            echo ""
+            echo "Snakemake Config Overrides (passed directly to the pipeline):"
+            echo "  --outdir <dir>         Output directory for results"
+            echo "  --guid <id>            Unique identifier for the subject"
+            echo "  --raw_mri_path <file>  Path to the raw input MRI file for preprocessing"
+            echo "  --region <name>        Region name for region-specific CBIR (e.g., 'Left-Hippocampus')"
+            echo "  --top_k <num>          Number of top similar images to retrieve"
+            echo "  --device <name>        Computation device ('cpu' or 'cuda')"
+            exit 0
+            ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift

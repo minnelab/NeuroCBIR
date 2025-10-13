@@ -6,6 +6,9 @@ CYAN="\033[36m"
 RED="\033[31m"
 RESET="\033[0m"
 
+# Source the banner function
+source "$(dirname "$0")/banner.sh"
+
 START_TIME=$(date +%s)
 
 # === DEFAULTS ===
@@ -45,7 +48,37 @@ while [[ "$#" -gt 0 ]]; do
         --device) DEVICE="$2"; shift ;;
         --internal_config) INTERNAL_CONFIG="$2"; shift ;;
         --user_config) USER_CONFIG="$2"; shift ;;
-        
+        # Help
+        -h|--help)
+            print_banner
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "Wrapper script to run the NeuroCBIR pipeline using Docker and Docker Compose."
+            echo "It can either run a full preprocessing + CBIR workflow or just the CBIR step on preprocessed data."
+            echo ""
+            echo "Required Arguments:"
+            echo "  --o_path <dir>         Path to the main output directory. This will be mounted into the containers."
+            echo "  --guid <id>            Unique identifier for the subject/run."
+            echo ""
+            echo "Workflow Mode (choose one):"
+            echo "  1) Preprocessing + CBIR:"
+            echo "     --preprocess          Flag to enable the full preprocessing pipeline."
+            echo "     --raw_mri_path <file> Path to the raw input T1w MRI. Required with --preprocess."
+            echo ""
+            echo "  2) CBIR Only:"
+            echo "     --brain_path <file>   Path to the preprocessed, skull-stripped brain image."
+            echo "     --seg_path <file>     Path to the preprocessed segmentation image (required for --scope region)."
+            echo ""
+            echo "NeuroCBIR Parameters (for the retrieval step):"
+            echo "  --scope <mode>         CBIR scope: 'whole_brain' or 'region'."
+            echo "  --region <name>        Region name for region-specific CBIR (e.g., 'Left-Hippocampus')."
+            echo "  --top_k <num>          Number of top similar images to retrieve."
+            echo "  --device <name>        Computation device ('cpu' or 'cuda')."
+            echo "  --emb_dataset_path <file> Path to the embedding dataset (HDF5 file)."
+            echo "  --internal_config <file> Path to internal configuration YAML file."
+            echo "  --user_config <file>   Path to user configuration YAML file."
+            exit 0
+            ;;
         *) echo -e "${RED}Unknown parameter passed: $1${RESET}"; exit 1 ;;
     esac
     shift
