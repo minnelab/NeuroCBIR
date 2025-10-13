@@ -30,7 +30,7 @@ rule conform_image:
         mri_convert --conform {input} {output}
         """
 
-rule bias_correction:
+rule N4BiasFieldCorrection:
     input:
         "{outdir}/{guid}/mri/orig_conform.mgz"
     output:
@@ -42,7 +42,7 @@ rule bias_correction:
         N4BiasFieldCorrection -i {input} -o {output}
         """
 
-rule synthseg_segmentation:
+rule mri_synthseg:
     input:
         "{outdir}/{guid}/mri/orig_nu.mgz"
     output:
@@ -54,7 +54,7 @@ rule synthseg_segmentation:
         mri_synthseg --i {input} --o {output} --robust --cpu --threads 8 --parc
         """
 
-rule talairach_transform:
+rule talairach_avi:
     input:
         "{outdir}/{guid}/mri/orig_nu.mgz"
     output:
@@ -70,7 +70,7 @@ rule talairach_transform:
             --outlta {output}
         """
 
-rule brain_extraction:
+rule mri_synthstrip:
     input:
         "{outdir}/{guid}/mri/orig_nu.mgz"
     output:
@@ -83,7 +83,7 @@ rule brain_extraction:
         mri_synthstrip --i {input} --o {output.brain} --mask {output.mask}
         """
 
-rule brain_vol2vol:
+rule mri_vol2vol_brain:
     input:
         brain="{outdir}/{guid}/mri/brain.mgz",
         xfm="{outdir}/{guid}/mri/transforms/talairach.xfm.lta"
@@ -99,7 +99,7 @@ rule brain_vol2vol:
             --o {output}
         """
 
-rule seg_vol2vol:
+rule mri_vol2vol_seg:
     input:
         seg="{outdir}/{guid}/mri/aparc+aseg.mgz",
         xfm="{outdir}/{guid}/mri/transforms/talairach.xfm.lta"

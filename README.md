@@ -12,7 +12,7 @@ It supports both **whole-brain** and **region-specific** searches across clinica
 It can be used in multiple ways:
 
 1. **Docker workflow** – run the full pipeline (preprocessing + CBIR) in a reproducible containerized environment.
-2. **Snakemake workflow** – execute the same pipeline using Snakemake + Singularity (Apptainer) for HPC or cluster environments.
+2. **Snakemake workflow** – execute the same pipeline using Snakemake + Singularity (Apptainer). Allows parallelization.
 3. **Python package** – import and extend the NeuroCBIR logic in your own Python workflows.
 
 ---
@@ -23,7 +23,7 @@ It can be used in multiple ways:
 |------------|-----------------|----------|
 | **Python** | ≥ 3.10 | For setup and optional local runs |
 | **Docker** | ≥ 24.0 | For the default containerized workflow |
-| **Apptainer / Singularity** | ≥ 1.2 | For Snakemake-based HPC workflows |
+| **Apptainer / Singularity** | ≥ 1.2 | For Snakemake-based workflow parallelization |
 | **Git** | Any recent | To clone the repository |
 
 ---
@@ -96,7 +96,12 @@ Full explanation on how to use each of the NeuroCBIR workflows can be found in:
 ./run_neurocbir.sh snakemake --help
 ```
 
+This is the resulting snakemake parallelized workflow:
+<p align="center">
+  <img src="deploy/snakemake/workflow_dag.png" alt="NeuroCBIR Workflow DAG" width="50%">
+</p>
 
+The figure above illustrates the Snakemake workflow for the NeuroCBIR pipeline, including preprocessing and retrieval stages.
 
 ---
 
