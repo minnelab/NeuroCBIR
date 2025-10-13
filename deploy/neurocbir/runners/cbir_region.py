@@ -13,7 +13,7 @@ import neurocbir
 logger = logging.getLogger(__name__)
 
 def main(
-        img_path: str,
+        brain_path: str,
         seg_path: str,
         emb_dataset_path: str,
         labels_path: str,
@@ -32,7 +32,7 @@ def main(
     Runs the Content-Based Image Retrieval (CBIR) pipeline for specific brain regions.
 
     Args:
-        img_path (str): Path to the query brain image.
+        brain_path (str): Path to the query brain image.
         seg_path (str): Path to the query segmentation image.
         emb_dataset_path (str): Path to the embedding dataset (Parquet).
         labels_path (str): Path to the CSV file with region labels.
@@ -72,7 +72,7 @@ def main(
     labels_bb_df = pd.merge(labels_df, bb_df, on="LabelName", how="inner") # Merge on the 'GUID' column
     
     # Load whole-brain image query
-    i_q = load_region(img_path, seg_path, labels_bb_df, region)
+    i_q = load_region(brain_path, seg_path, labels_bb_df, region)
     i_q = torch.from_numpy(i_q).float().unsqueeze(0).unsqueeze(0).to(device)
 
     # Get features of the query

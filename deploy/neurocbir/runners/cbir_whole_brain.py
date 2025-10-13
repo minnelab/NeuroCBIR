@@ -13,7 +13,7 @@ import neurocbir
 logger = logging.getLogger(__name__)
 
 def main(
-    img_path: str,
+    brain_path: str,
     emb_dataset_path: str,
     top_k: int,
     device: str,
@@ -31,7 +31,7 @@ def main(
     between the query and dataset embeddings, retrieves the top-k most similar items, and
     prints and optionally saves the results.
     Args:
-        img_path (str): Path to the query whole-brain image.
+        brain_path (str): Path to the query whole-brain image.
         emb_dataset_path (str): Path to the embedding dataset in Parquet format.
         device (str): Device identifier (e.g., "cpu" or "cuda:0") for computation.
         vae_params (dict): Parameters for building the VAE model.
@@ -62,7 +62,7 @@ def main(
     embs_dataset = embs_dataset[["GUID", "features"]]
 
     # Load whole-brain image query
-    i_q = load_brain(img_path)
+    i_q = load_brain(brain_path)
     i_q = torch.from_numpy(i_q).float().unsqueeze(0).unsqueeze(0).to(device)
 
     # Get features of the query
