@@ -4,7 +4,7 @@ services:
     container_name: freesurfer
     user: root
     volumes:
-      - ${OUT_PATH}:/data
+      - ${O_PATH}:/data
       - $FS_LICENSE_PATH:/usr/local/freesurfer/.license
     command: /bin/bash
 
@@ -13,7 +13,7 @@ services:
     container_name: ants
     user: root
     volumes:
-      - ${OUT_PATH}:/data
+      - ${O_PATH}:/data
     command: /bin/bash
 
   neurocbir:
@@ -21,6 +21,6 @@ services:
     container_name: neurocbir
     user: root
     volumes:
-      - ${OUT_PATH}:/data
+      - ${O_PATH}:/data
       - ../configs:/configs
     entrypoint: ["/usr/local/bin/entrypoint.sh"]

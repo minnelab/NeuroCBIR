@@ -3,7 +3,7 @@ set -e  # Exit on any error
 REPO_DIR=$(pwd) # Repository root directory
 
 # Check if inside NeuroCBIR repo
-if [ ! -f "$REPO_DIR/run_snakemake.sh" ]; then
+if [ ! -f "$REPO_DIR/run_neurocbir.sh" ]; then
     echo "Error: Please run this script from the NeuroCBIR repository root directory."
     exit 1
 fi  

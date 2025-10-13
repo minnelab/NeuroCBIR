@@ -15,7 +15,7 @@ FS_LICENSE_PATH="/usr/local/freesurfer/.license"
 # For this wrapper
 PREPROCESS=false
 RAW_MRI_PATH="" # Need to define if --preprocess
-OUT_PATH=""
+O_PATH=""
 GUID=""
 # For neurocbir package
 BRAIN_PATH="" # Do not define if --preprocess
@@ -34,11 +34,10 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --preprocess) PREPROCESS=true ;;
         --raw_mri_path) RAW_MRI_PATH="$2"; shift ;;
-        --out_path) OUT_PATH="$2"; shift ;;
+        --o_path) O_PATH="$2"; shift ;;
         --guid) GUID="$2"; shift ;;
         --brain_path) BRAIN_PATH="$2"; shift ;;
         --seg_path) SEG_PATH="$2"; shift ;;
-        --o_path) O_PATH="$2"; shift ;;
         --emb_dataset_path) EMB_DATASET_PATH="$2"; shift ;;
         --region) REGION="$2"; shift ;;
         --scope) SCOPE="$2"; shift ;;
@@ -53,12 +52,12 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Export variables for docker-compose
-export OUT_PATH="$OUT_PATH"
+export O_PATH="$O_PATH"
 export FS_LICENSE_PATH="$FS_LICENSE_PATH"
 
 # === VALIDATION ===
-if [[ -z "$OUT_PATH" || -z "$GUID" ]]; then
-    echo -e "${RED}Error: --out_path and --guid are required.${RESET}"
+if [[ -z "$O_PATH" || -z "$GUID" ]]; then
+    echo -e "${RED}Error: --o_path and --guid are required.${RESET}"
     exit 1
 fi
 
@@ -77,21 +76,21 @@ NEUROCBIR_ARGS=()
 
 # === PREPROCESSING ===
 if [[ "$PREPROCESS" == true ]]; then
-    mkdir -p "${OUT_PATH}/${GUID}/mri/orig"
-    cp $RAW_MRI_PATH "${OUT_PATH}/${GUID}/mri/orig/001.mgz"
+    mkdir -p "${O_PATH}/${GUID}/mri/orig"
+    cp $RAW_MRI_PATH "${O_PATH}/${GUID}/mri/orig/001.mgz"
 
     echo -e "${CYAN}Step 1 — preprocessing${RESET}"
-    # Assuming preprocess.sh uses docker-compose and OUT_PATH is mounted as /data
+    # Assuming preprocess.sh uses docker-compose and O_PATH is mounted as /data
     deploy/scripts/preprocess.sh "/data/${GUID}/mri/orig/001.mgz" "/data" "$GUID"
 
     # After preprocessing, set the paths for the neurocbir step
     NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
     NEUROCBIR_ARGS+=(--seg_path "/data/${GUID}/mri/aparc+aseg_talairach.nii.gz")
 else
-    mkdir -p "${OUT_PATH}/${GUID}/mri"
-    cp $BRAIN_PATH "${OUT_PATH}/${GUID}/mri/brain_talairach.nii.gz"
+    mkdir -p "${O_PATH}/${GUID}/mri"
+    cp $BRAIN_PATH "${O_PATH}/${GUID}/mri/brain_talairach.nii.gz"
     if [[ "$SCOPE" == "region" ]]; then
-        cp $SEG_PATH "${OUT_PATH}/${GUID}/mri/aparc+aseg_talairach.nii.gz"
+        cp $SEG_PATH "${O_PATH}/${GUID}/mri/aparc+aseg_talairach.nii.gz"
     fi
     NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
     NEUROCBIR_ARGS+=(--seg_path "/data/${GUID}/mri/aparc+aseg_talairach.nii.gz")
