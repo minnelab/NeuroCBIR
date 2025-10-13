@@ -48,6 +48,7 @@ while [[ "$#" -gt 0 ]]; do
         --device) DEVICE="$2"; shift ;;
         --internal_config) INTERNAL_CONFIG="$2"; shift ;;
         --user_config) USER_CONFIG="$2"; shift ;;
+        --fs_license) FS_LICENSE_PATH="$2" ; shift ;;
         # Help
         -h|--help)
             print_banner
@@ -77,6 +78,39 @@ while [[ "$#" -gt 0 ]]; do
             echo "  --emb_dataset_path <file> Path to the embedding dataset (HDF5 file)."
             echo "  --internal_config <file> Path to internal configuration YAML file."
             echo "  --user_config <file>   Path to user configuration YAML file."
+            echo "Other Options:"
+            echo "  --fs_license <file>    Path to FreeSurfer license file (default: $FS_LICENSE_PATH)."
+            echo ""
+            echo "Example 1: Preprocessing + CBIR:"
+            echo "  ./run_neurocbir.sh docker --preprocess --o_path /output --guid guid \\"
+            echo "                        --raw_mri_path /path/to/mri.nii.gz  \\"
+            echo "                        --scope region --region Left-Hippocampus --top_k 5 --device cpu \\"
+            echo "                        --emb_dataset_path /path/to/embeddings.h5 \\"
+            echo "                        --user_config /path/to/user_config.yaml \\"
+            echo "                        --internal_config /path/to/internal_config.yaml \\"
+            echo "                        --fs_license /path/to/license.txt"
+            echo "" 
+            echo "Example 2: CBIR Only for --scope whole_brain:"           
+            echo "  ./run_neurocbir.sh docker --o_path /output --guid guid \\"
+            echo "                        --brain_path /path/to/brain.nii.gz"
+            echo "                        --scope whole_brain --top_k 5 --device cpu \\"
+            echo "                        --emb_dataset_path /path/to/embeddings.h5 \\"
+            echo "                        --user_config /path/to/user_config.yaml \\"
+            echo "                        --internal_config /path/to/internal_config.yaml \\"
+            echo "                        --fs_license /path/to/license.txt"
+            echo "" 
+            echo "Example 3: CBIR Only for --scope region:"           
+            echo "  ./run_neurocbir.sh docker --o_path /output --guid guid \\"
+            echo "                        --brain_path /path/to/brain.nii.gz --seg_path /path/to/seg.nii.gz \\"
+            echo "                        --scope region --region Left-Hippocampus --top_k 5 --device cpu \\"
+            echo "                        --emb_dataset_path /path/to/embeddings.h5 \\"
+            echo "                        --user_config /path/to/user_config.yaml \\"
+            echo "                        --internal_config /path/to/internal_config.yaml \\"
+            echo "                        --fs_license /path/to/license.txt"
+            echo ""
+            echo "Note:"
+            echo "  - Ensure that the FreeSurfer license file is correctly set in the script (default path: $FS_LICENSE_PATH)."
+            echo "  - The output directory (--o_path) will be created if it does not
             exit 0
             ;;
         *) echo -e "${RED}Unknown parameter passed: $1${RESET}"; exit 1 ;;

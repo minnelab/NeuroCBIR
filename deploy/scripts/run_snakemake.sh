@@ -30,7 +30,7 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --config) SNAKEMAKE_CONFIG="$2"; shift ;;
         --cores) CORES="$2"; shift ;;
-        --fs-license)
+        --fs_license)
             FS_LICENSE_PATH="$2"
             SNAKEMAKE_CONFIG_OVERRIDES+=("--config" "fs_license=$2")
             shift
@@ -54,7 +54,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "Pipeline Execution Options:"
             echo "  --config <file>        Path to Snakemake config file (default: $SNAKEMAKE_CONFIG_DEFAULT)"
             echo "  --cores <num>          Number of CPU cores for Snakemake to use (default: $CORES_DEFAULT)"
-            echo "  --fs-license <file>    Path to FreeSurfer license file (default: $FS_LICENSE_PATH_DEFAULT)"
+            echo "  --fs_license <file>    Path to FreeSurfer license file (default: $FS_LICENSE_PATH_DEFAULT)"
             echo "  -h, --help             Display this help message and exit"
             echo ""
             echo "Snakemake Config Overrides (passed directly to the pipeline):"
@@ -64,6 +64,19 @@ while [[ "$#" -gt 0 ]]; do
             echo "  --region <name>        Region name for region-specific CBIR (e.g., 'Left-Hippocampus')"
             echo "  --top_k <num>          Number of top similar images to retrieve"
             echo "  --device <name>        Computation device ('cpu' or 'cuda')"
+            echo "  --user_config <file>   Path to user configuration YAML file"
+            echo "  --internal_config <file> Path to internal configuration YAML file"
+            echo ""
+            echo "Example 1: Just setup the config.yaml file and run:"
+            echo "  ./run_neurocbir.sh snakemake --config deploy/snakemake/config.yaml"
+            echo ""
+            echo "Example 2: Run with specific parameters directly:"
+            echo "  ./run_neurocbir.sh snakemake --config deploy/snakemake/config.yaml --cores 8 \\"
+            echo "     --outdir /output --guid guid --raw_mri_path /path/to/mri.nii.gz \\"
+            echo "     --region LEFT_HIPPOCAMPUS --top_k 5 --device cpu --user_config /path/to/user_config.yaml \\"
+            echo "     --user_config /path/to/user_config.yaml \\"
+            echo "     --internal_config /path/to/internal_config.yaml \\"
+            echo "     --fs_license /path/to/license.txt"
             exit 0
             ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
