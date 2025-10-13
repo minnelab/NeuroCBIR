@@ -1,5 +1,5 @@
 # >>> USER CONFIGURATION — You can modify these values <<<
-img_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_norm.nii.gz" # Path to MRI image to query
+brain_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_norm.nii.gz" # Path to MRI image to query
 seg_path: "data/data_private/example/OAS30001_MR_d0129/mri/align_aparc+aseg.nii.gz" # (only region) Path to MRI image to query
 o_path: "" # Path to save neurocbir report. If None then it is not saved.
 labels_path: "data/labels.csv" # (only region)

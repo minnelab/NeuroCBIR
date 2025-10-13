@@ -20,7 +20,7 @@ rule run_neurocbir_whole_brain:
         """
         cd /app
         python -m neurocbir \
-        --img_path {input.brain} \
+        --brain_path {input.brain} \
         --scope {params.scope} \
         --emb_dataset_path {params.emb_dataset_path} \
         --top_k {params.top_k} \
@@ -49,7 +49,7 @@ rule run_neurocbir_region:
         """
         cd /app
         python -m neurocbir \
-        --img_path {input.brain} \
+        --brain_path {input.brain} \
         --seg_path {input.seg} \
         --scope {params.scope} \
         --region {wildcards.region} \

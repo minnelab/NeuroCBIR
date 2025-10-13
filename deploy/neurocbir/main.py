@@ -22,7 +22,7 @@ def main():
     default_user_config = os.path.join(package_dir, "configs/user_config.yaml")
       
     # Optional overrides
-    parser.add_argument('--img_path', help='Path to the preprocessed brain MRI image in .nii.gz, .nii or .mgz format.')
+    parser.add_argument('--brain_path', help='Path to the preprocessed brain MRI image in .nii.gz, .nii or .mgz format.')
     parser.add_argument('--seg_path', help='Path to the segmentation file (aparc+aseg.nii) in .nii.gz, .nii or .mgz format.')
     parser.add_argument('--o_path', help='Path to the output file. If not specified then not saved.')
     parser.add_argument('--emb_dataset_path', help='Path to the embedding dataset in .parquet format.')

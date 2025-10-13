@@ -84,7 +84,7 @@ if [[ "$PREPROCESS" == true ]]; then
     deploy/scripts/preprocess.sh "/data/${GUID}/mri/orig/001.mgz" "/data" "$GUID"
 
     # After preprocessing, set the paths for the neurocbir step
-    NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
+    NEUROCBIR_ARGS+=(--brain_path "/data/${GUID}/mri/brain_talairach.nii.gz")
     NEUROCBIR_ARGS+=(--seg_path "/data/${GUID}/mri/aparc+aseg_talairach.nii.gz")
 else
     mkdir -p "${O_PATH}/${GUID}/mri"
@@ -92,7 +92,7 @@ else
     if [[ "$SCOPE" == "region" ]]; then
         cp $SEG_PATH "${O_PATH}/${GUID}/mri/aparc+aseg_talairach.nii.gz"
     fi
-    NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
+    NEUROCBIR_ARGS+=(--brain_path "/data/${GUID}/mri/brain_talairach.nii.gz")
     NEUROCBIR_ARGS+=(--seg_path "/data/${GUID}/mri/aparc+aseg_talairach.nii.gz")
 fi
 
