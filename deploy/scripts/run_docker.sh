@@ -90,7 +90,9 @@ if [[ "$PREPROCESS" == true ]]; then
 else
     mkdir -p "${OUT_PATH}/${GUID}/mri"
     cp $BRAIN_PATH "${OUT_PATH}/${GUID}/mri/brain_talairach.nii.gz"
-    cp $SEG_PATH "${OUT_PATH}/${GUID}/mri/aparc+aseg_talairach.nii.gz"
+    if SCOPE == "region"; then
+        cp $SEG_PATH "${OUT_PATH}/${GUID}/mri/aparc+aseg_talairach.nii.gz"
+    fi
     NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")
     NEUROCBIR_ARGS+=(--seg_path "/data/${GUID}/mri/aparc+aseg_talairach.nii.gz")
 fi
@@ -106,7 +108,7 @@ echo -e "${CYAN}Step 2 — neurocbir${RESET}"
 [[ -n "$DEVICE" ]] && NEUROCBIR_ARGS+=(--device "$DEVICE")
 [[ -n "$INTERNAL_CONFIG" ]] && NEUROCBIR_ARGS+=(--internal_config "$INTERNAL_CONFIG")
 [[ -n "$USER_CONFIG" ]] && NEUROCBIR_ARGS+=(--user_config "$USER_CONFIG")
-[[ -n "$O_PATH" ]] && NEUROCBIR_ARGS+=(--o_path "/data/${GUID}/output") # Map o_path inside container
+[[ -n "$O_PATH" ]] && NEUROCBIR_ARGS+=(--o_path "/data/${GUID}/neurocbir_report/$SCOPE/") # Map o_path inside container
 
 # Run NeuroCBIR container with all arguments
 docker compose -f deploy/docker/docker-compose.yml run --rm neurocbir "${NEUROCBIR_ARGS[@]}"

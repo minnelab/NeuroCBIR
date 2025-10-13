@@ -133,16 +133,27 @@ if __name__ == "__main__":
 
     # Load configuration file
     internal_config = load_yaml(args.internal_config)
-    config = internal_config["common"]
-    config.update(internal_config["region"])
-    config.update(load_yaml(args.user_config))
-        
-    # Enforce condition
-    if config.get("scope") != "region":
-        raise Exception(f"--region must be 'region'")
+    user_config = load_yaml(args.user_config)
+    cli_config = vars(args)
     
+    # Priority: default < internal config < user config < CLI arguments
+    scope = cli_config.get("scope") or user_config.get("scope") or internal_config.get("scope")
+    if scope not in ["region"]:
+        raise Exception(f"--scope must be 'region'. Currently scope = {scope}") 
+    
+    # Load scope-specific configurations
+    internal_config.update(internal_config.get(scope, {}))
+    user_config.update(user_config.get(scope, {}))
+    
+    # Merge configurations with priority
+    config = {}
+    config.update(internal_config)
+    config.update(user_config)
+    config.update(cli_config)
+    
+    # Enforce condition
     if config.get("scope") == "region" and not config.get("region"):
-            raise Exception("--region is required when --scope=region")
+        raise Exception("--region is required when --scope=region")
 
     # Override with CLI arguments if given
     for key, value in vars(args).items():

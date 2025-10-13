@@ -6,7 +6,6 @@ from neurocbir.runners import cbir_region, cbir_whole_brain
 from neurocbir.utils import load_yaml 
 import neurocbir
 
-
 def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
@@ -37,25 +36,28 @@ def main():
 
     # Load configuration file
     internal_config = load_yaml(args.internal_config)
-    config = internal_config["common"]
-    config.update(load_yaml(args.user_config))         
+    user_config = load_yaml(args.user_config)
+    cli_config = vars(args)
     
-    # Override with CLI arguments if given
-    for key, value in vars(args).items():
-        if value is not None:
-            config[key] = value
-            
-    # Load internal config
-    if config["scope"] == "whole_brain":
-        config.update(internal_config["whole_brain"])
-    elif config["scope"] == "region":
-        config.update(internal_config["region"])
-        # Enforce condition
-        if config.get("scope") == "region" and not config.get("region"):
-            raise Exception("--region is required when --scope=region")
-    else:
-        raise Exception(f"--scope must be either 'whole_brain' or 'region'. Currently scope = {config['scope']}") 
-            
+    # Priority: default < internal config < user config < CLI arguments
+    scope = cli_config.get("scope") or user_config.get("scope") or internal_config.get("scope")
+    if scope not in ["whole_brain", "region"]:
+        raise Exception(f"--scope must be either 'whole_brain' or 'region'. Currently scope = {scope}") 
+    
+    # Load scope-specific configurations
+    internal_config.update(internal_config.get(scope, {}))
+    user_config.update(user_config.get(scope, {}))
+    
+    # Merge configurations with priority
+    config = {}
+    config.update(internal_config)
+    config.update(user_config)
+    config.update(cli_config)
+    
+    # Enforce condition
+    if config.get("scope") == "region" and not config.get("region"):
+        raise Exception("--region is required when --scope=region")
+    
     # 🔍 Display final configuration
     print("\n" + "="*70)
     print("NeuroCBIR Running Configuration")
@@ -63,9 +65,9 @@ def main():
     print(json.dumps(config, indent=4, sort_keys=True))
     print("="*70 + "\n")
     
-    if config["scope"] == "whole_brain":
+    if scope == "whole_brain":
         cbir_whole_brain(**config)
-    elif config["scope"] == "region":
+    elif scope == "region":
         cbir_region(**config)
         
 if __name__ == "__main__":
