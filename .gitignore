@@ -37,6 +37,7 @@ var/
 *.egg
 *.sif
 *.simg
+*.sif.id
 
 venv/
 tmp/
