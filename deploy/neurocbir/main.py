@@ -11,7 +11,7 @@ def setup_logging():
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
     )
-
+    
 def main():
     
     setup_logging()
@@ -47,12 +47,16 @@ def main():
     # Load scope-specific configurations
     internal_config.update(internal_config.get(scope, {}))
     user_config.update(user_config.get(scope, {}))
-    
+        
     # Merge configurations with priority
     config = {}
     config.update(internal_config)
     config.update(user_config)
-    config.update(cli_config)
+    
+    # Override with CLI arguments if given
+    for key, value in vars(args).items():
+        if value is not None:
+            config[key] = value
     
     # Enforce condition
     if config.get("scope") == "region" and not config.get("region"):

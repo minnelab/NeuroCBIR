@@ -138,7 +138,11 @@ if __name__ == "__main__":
     config = {}
     config.update(internal_config)
     config.update(user_config)
-    config.update(cli_config)
+    
+    # Override with CLI arguments if given
+    for key, value in vars(args).items():
+        if value is not None:
+            config[key] = value
 
     # Override with CLI arguments if given
     for key, value in vars(args).items():

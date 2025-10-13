@@ -8,7 +8,6 @@ common:
 
 # Whole-brain configuration
 whole_brain:
-  emb_dataset_path: "data/data_private/whole_brain/projected_embeddings.parquet" # Path to the embedding dataset
   vae_ckpt_path: "data/data_private/whole_brain/vae_ckpt.pth"
   cl_ckpt_path: "data/data_private/whole_brain/cl_ckpt.pth"
 

@@ -90,7 +90,7 @@ if [[ "$PREPROCESS" == true ]]; then
 else
     mkdir -p "${OUT_PATH}/${GUID}/mri"
     cp $BRAIN_PATH "${OUT_PATH}/${GUID}/mri/brain_talairach.nii.gz"
-    if SCOPE == "region"; then
+    if [[ "$SCOPE" == "region" ]]; then
         cp $SEG_PATH "${OUT_PATH}/${GUID}/mri/aparc+aseg_talairach.nii.gz"
     fi
     NEUROCBIR_ARGS+=(--img_path "/data/${GUID}/mri/brain_talairach.nii.gz")

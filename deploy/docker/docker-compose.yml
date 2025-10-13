@@ -17,9 +17,7 @@ services:
     command: /bin/bash
 
   neurocbir:
-    build:
-      context: ../../
-      dockerfile: deploy/docker/Dockerfile
+    image: neurocbir:latest
     container_name: neurocbir
     user: root
     volumes:
