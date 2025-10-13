@@ -67,6 +67,6 @@ echo -e "   docker run --rm ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --help"
 # === DOCKER COMPOSE INSTRUCTIONS ===
 echo -e "\n${CYAN}📦 Preparing preprocessing containers (FreeSurfer, ANTs)...${RESET}"
 echo -e "${YELLOW}This will download the necessary Docker images for preprocessing.${RESET}"
-docker compose -f deploy/infra/docker-compose.yml pull
+docker compose -f deploy/docker/docker-compose.yml pull
 echo -e "${CYAN}✅ Preprocessing containers are ready.${RESET}"
 echo -e "You can now use 'docker compose run' for preprocessing tasks."
