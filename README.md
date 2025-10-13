@@ -98,7 +98,7 @@ Full explanation on how to use each of the NeuroCBIR workflows can be found in:
 
 This is the resulting snakemake parallelized workflow:
 <p align="center">
-  <img src="deploy/snakemake/workflow_dag.png" alt="NeuroCBIR Workflow DAG" width="50%">
+  <img src="deploy/snakemake/workflow_dag.svg" alt="NeuroCBIR Workflow DAG" width="60%">
 </p>
 
 The figure above illustrates the Snakemake workflow for the NeuroCBIR pipeline, including preprocessing and retrieval stages.
