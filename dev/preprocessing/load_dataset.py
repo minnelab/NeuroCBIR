@@ -11,7 +11,7 @@ import torchio as tio  # TorchIO is a popular library for 3D medical image augme
 import warnings
 from tqdm import tqdm
 import json
-from preprocessing.padding import pad_mri_to_shape
+from dev.preprocessing.padding import pad_mri_to_shape
 from collections import defaultdict
 import math
 import pandas as pd
