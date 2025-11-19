@@ -1,12 +1,10 @@
 # NeuroCBIR
 
-*A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI Across Multiple Clinical Cohorts.*
+*A Public Image Retrieval System for Whole-Brain and Region-Specific MRI*
 
-
-----
 ## Overview
 
-**NeuroCBIR** is an open neuroimaging framework for **content-based image retrieval (CBIR)** on structural MRI data.  
+**NeuroCBIR** is an open neuroimaging framework for **content-based image retrieval (CBIR)** on structural MRI data.
 It supports both **whole-brain** and **region-specific** searches across clinical datasets.
 
 It can be used in multiple ways:
@@ -19,12 +17,12 @@ It can be used in multiple ways:
 
 ## System Requirements
 
-| Component | Minimum Version | Purpose |
-|------------|-----------------|----------|
-| **Python** | ≥ 3.10 | For setup and optional local runs |
-| **Docker** | ≥ 24.0 | For the default containerized workflow |
-| **Apptainer / Singularity** | ≥ 1.2 | For Snakemake-based workflow parallelization |
-| **Git** | Any recent | To clone the repository |
+| Component                         | Minimum Version | Purpose                                      |
+| --------------------------------- | --------------- | -------------------------------------------- |
+| **Python**                  | ≥ 3.10         | For setup and optional local runs            |
+| **Docker**                  | ≥ 24.0         | For the default containerized workflow       |
+| **Apptainer / Singularity** | ≥ 1.2          | For Snakemake-based workflow parallelization |
+| **Git**                     | Any recent      | To clone the repository                      |
 
 ---
 
@@ -33,6 +31,7 @@ It can be used in multiple ways:
 This project requires pre-trained model weights and embedding datasets, which must be downloaded manually. After cloning the repository, you must place these files into the `deploy/data/data_private/` directory.
 
 The expected directory structure is:
+
 ```
 deploy/data/
 └── data_private/
@@ -62,16 +61,19 @@ chmod +x run_neurocbir.sh
 Run the setup script corresponding to your workflow:
 
 ### Docker Mode
+
 ```bash
 ./setup.sh docker
 ```
 
 ### Snakemake Mode
+
 ```bash
 ./setup.sh snakemake
 ```
 
 These scripts will:
+
 - Check for required dependencies (Docker, Python, Singularity, etc.)
 - Build or pull necessary containers
 - Prepare configuration files
@@ -82,21 +84,25 @@ These scripts will:
 ## Usage
 
 Full explanation on how to use each of the NeuroCBIR workflows can be found in:
+
 ```bash
 ./run_neurocbir.sh --help
 ```
 
 ### Run with Docker
+
 ```bash
 ./run_neurocbir.sh docker --help
 ```
 
 ### Run with Snakemake
+
 ```bash
 ./run_neurocbir.sh snakemake --help
 ```
 
 This is the resulting snakemake parallelized workflow:
+
 <p align="center">
   <img src="deploy/snakemake/workflow_dag.svg" alt="NeuroCBIR Workflow DAG" width="60%">
 </p>
@@ -105,12 +111,16 @@ The figure above illustrates the Snakemake workflow for the NeuroCBIR pipeline, 
 
 ---
 
+## Reproducibility
+
+To fully reproduce the NeuroCBIR pipeline, including training, evaluation, and experiments, see `dev/README.md`.
+
 ## Contact
 
-Félix Nieto-del-Amor¹, Jingru Fu¹, J.-Sebastian Muehlboeck², Eric Westman²,  Daniel Ferreira², Rodrigo Moreno¹  
+Félix Nieto-del-Amor¹, Jingru Fu¹, J.-Sebastian Muehlboeck², Eric Westman²,  Daniel Ferreira², Rodrigo Moreno¹
 
-¹ Division of Biomedical Imaging, KTH Royal Institute of Technology  
-² Division of Clinical Geriatrics, Karolinska Institute  
+¹ Division of Biomedical Imaging, KTH Royal Institute of Technology
+² Division of Clinical Geriatrics, Karolinska Institute
 
 For questions or support, contact **Félix Nieto-del-Amor** at: fenda@kth.se
 
