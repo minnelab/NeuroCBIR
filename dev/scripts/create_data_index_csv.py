@@ -3,10 +3,8 @@ import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from dev.utils import load_config_from_path
 
-def load_config(config_path):
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 def create_lookup_table(root_dirs, output_csv, id_key):
     rows = []
@@ -14,7 +12,7 @@ def create_lookup_table(root_dirs, output_csv, id_key):
 
     for dataset_name, root_dir in root_dirs.items():
         for batch_file in sorted(Path(root_dir).glob("*.npz")):
-            with np.load(batch_file) as data:
+            with np.load(batch_file, allow_pickle=True) as data:
                 # ids = np.unique(data[id_key])
                 ids = pd.unique(data[id_key])
                 # ids = data[id_key]
@@ -40,6 +38,6 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str, required=True, help='Path to the JSON config file')
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = load_config_from_path(args.config)
     main(config)
 

@@ -2,17 +2,15 @@
 
 config = {
     "random_state": 1234,
-    "device": "cuda",  # "cuda" or "cpu"
-    "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/",
-    "base_logging_path": "/cephyr/users/felixnie/Alvis/logs/",
-    "labels_path": "data/labels.csv",
-    "bb_path": "data/bounding_boxes.csv",
+    "device": "cpu",  # "cuda" or "cpu"
+    "data_path": "data/mock_dataset/original/",
+    "metadata_file": "data/mock_dataset/original/metadata.csv",
+    "base_logging_path": "data/mock_dataset/logs/",
     "resume_path": "", # e.g., "/cephyr/users/felixnie/Alvis/logs/autoencoder/checkpoint_final.pth"
-    "num_epochs": 10000,
-    "max_batch_size": 8, # <-- must be divisible by "n_structs"
-    "batch_size": 24, # <-- must be divisible by "max_batch_size"
-    "n_structs": 4,
-    "n_batches_per_file": 800,
+    "num_epochs": 500,
+    "max_batch_size": 1, # <-- must be divisible by "n_structs"
+    "batch_size": 8, # <-- must be divisible by "max_batch_size"
+    # "n_batches_per_file": 800,
     "lr": 1e-4,
     "adv_weight": 0.1,
     "perceptual_weight": 0.1,
@@ -41,4 +39,3 @@ config = {
 }
 
 assert config["batch_size"] % config["max_batch_size"] == 0
-assert config["max_batch_size"] % config["n_structs"] == 0

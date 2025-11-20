@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import math 
 from torch.utils.data import Sampler
 import random
-import torchio as tio  # TorchIO is a popular library for 3D medical image augmentation
+# import torchio as tio  # TorchIO is a popular library for 3D medical image augmentation
 import warnings
 from tqdm import tqdm
 import json
@@ -84,277 +84,277 @@ def get_label(image_id, labels_df, column='disease_label'):
         print(f"Label {image_id} not found")
         return np.nan
     
-class BrainMRIDataset(Dataset):
-    def __init__(self, image_paths, ages, labels, transform=None, transform_age=None, cache=False, sparse_path=None, return_seg=False):
-        """
-        Parameters:
-            image_paths (list or np.array): Paths to the MRI image files.
-            ages (list or np.array): Corresponding ages.
-            labels (list or np.array): Labels (0 or 1) for each sample.
-            pe (bool): Whether to include positional encoding.
-            transform (callable): Data augmentation transform to apply on the images.
-                                  (Recommended: a TorchIO transform or a custom callable).
-                                  'default': default aumentation operations.
-            transform_age (float): np.random.uniform(-transform_age, +transform_age).
-        """
-        self.image_paths = np.array(image_paths)
-        self.ages = np.array(ages)
-        self.labels = np.array(labels)
-        self.transform = transform
-        self.transform_age = transform_age
-        self.cache = cache
-        self.sparse_path=sparse_path
-        self.return_seg=return_seg
+# class BrainMRIDataset(Dataset):
+#     def __init__(self, image_paths, ages, labels, transform=None, transform_age=None, cache=False, sparse_path=None, return_seg=False):
+#         """
+#         Parameters:
+#             image_paths (list or np.array): Paths to the MRI image files.
+#             ages (list or np.array): Corresponding ages.
+#             labels (list or np.array): Labels (0 or 1) for each sample.
+#             pe (bool): Whether to include positional encoding.
+#             transform (callable): Data augmentation transform to apply on the images.
+#                                   (Recommended: a TorchIO transform or a custom callable).
+#                                   'default': default aumentation operations.
+#             transform_age (float): np.random.uniform(-transform_age, +transform_age).
+#         """
+#         self.image_paths = np.array(image_paths)
+#         self.ages = np.array(ages)
+#         self.labels = np.array(labels)
+#         self.transform = transform
+#         self.transform_age = transform_age
+#         self.cache = cache
+#         self.sparse_path=sparse_path
+#         self.return_seg=return_seg
             
-        if transform == "default":
-            augmentation_transforms = tio.Compose([
-                                                    tio.RandomAffine(
-                                                        scales=(0.9, 1.1),        # Random scaling
-                                                        degrees=15,               # Random rotation in degrees
-                                                        translation=10            # Random translation in mm
-                                                    ),
-                                                    tio.RandomFlip(axes=('LR',)),  # Random left-right flip
-                                                    tio.RandomNoise(mean=0.0, std=0.05),  # Add Gaussian noise
-                                                    # tio.RandomBiasField(coefficients=0.5) # Simulate intensity inhomogeneities !too slow
-                                                ])
-            self.transform = augmentation_transforms
+#         if transform == "default":
+#             augmentation_transforms = tio.Compose([
+#                                                     tio.RandomAffine(
+#                                                         scales=(0.9, 1.1),        # Random scaling
+#                                                         degrees=15,               # Random rotation in degrees
+#                                                         translation=10            # Random translation in mm
+#                                                     ),
+#                                                     tio.RandomFlip(axes=('LR',)),  # Random left-right flip
+#                                                     tio.RandomNoise(mean=0.0, std=0.05),  # Add Gaussian noise
+#                                                     # tio.RandomBiasField(coefficients=0.5) # Simulate intensity inhomogeneities !too slow
+#                                                 ])
+#             self.transform = augmentation_transforms
 
-        # Preload images if cache is enabled
-        if self.cache:
-            self.cached_img = np.ones((len(self.image_paths), 176, 208, 160), dtype=np.uint8)
-            self.cached_seg = np.ones((len(self.image_paths), 176, 208, 160), dtype=np.uint8)
+#         # Preload images if cache is enabled
+#         if self.cache:
+#             self.cached_img = np.ones((len(self.image_paths), 176, 208, 160), dtype=np.uint8)
+#             self.cached_seg = np.ones((len(self.image_paths), 176, 208, 160), dtype=np.uint8)
 
-            for i, path in enumerate(self.image_paths):
-                print(f"Loading {i+1}/{len(self.image_paths)} {(i+1)/len(self.image_paths)*100:.1f}% ...", end='\r')
-                img_seg = np.load(path, allow_pickle=True).item()
+#             for i, path in enumerate(self.image_paths):
+#                 print(f"Loading {i+1}/{len(self.image_paths)} {(i+1)/len(self.image_paths)*100:.1f}% ...", end='\r')
+#                 img_seg = np.load(path, allow_pickle=True).item()
                 
-                image = img_seg['image']
-                seg = img_seg['seg']
+#                 image = img_seg['image']
+#                 seg = img_seg['seg']
 
-                assert image.shape == (176, 208, 160), f"Unexpected shape: {image.shape}"
-                assert seg.shape == (176, 208, 160), f"Unexpected shape: {seg.shape}"
+#                 assert image.shape == (176, 208, 160), f"Unexpected shape: {image.shape}"
+#                 assert seg.shape == (176, 208, 160), f"Unexpected shape: {seg.shape}"
 
-                self.cached_img[i] = image.copy()
-                self.cached_seg[i] = seg.copy()
+#                 self.cached_img[i] = image.copy()
+#                 self.cached_seg[i] = seg.copy()
 
-            print()
+#             print()
 
-        elif self.sparse_path:
-            with open(self.sparse_path, 'r') as f:
-                self.common_bb = json.load(f)
-            self.common_dim = np.array(self.common_bb['Hippocampus (lh)'][1]) - np.array(self.common_bb['Hippocampus (lh)'][0])
-            self.dementia_subcortical_indices = {
-                "Hippocampus (lh)": 17,
-                "Hippocampus (rh)": 53,
-                "Amygdala (lh)": 18,
-                "Amygdala (rh)": 54,
-                "Thalamus (lh)": 10,
-                "Thalamus (rh)": 49,
-                "Caudate (lh)": 11,
-                "Caudate (rh)": 50,
-                "Putamen (lh)": 12,
-                "Putamen (rh)": 51,
-            }
+#         elif self.sparse_path:
+#             with open(self.sparse_path, 'r') as f:
+#                 self.common_bb = json.load(f)
+#             self.common_dim = np.array(self.common_bb['Hippocampus (lh)'][1]) - np.array(self.common_bb['Hippocampus (lh)'][0])
+#             self.dementia_subcortical_indices = {
+#                 "Hippocampus (lh)": 17,
+#                 "Hippocampus (rh)": 53,
+#                 "Amygdala (lh)": 18,
+#                 "Amygdala (rh)": 54,
+#                 "Thalamus (lh)": 10,
+#                 "Thalamus (rh)": 49,
+#                 "Caudate (lh)": 11,
+#                 "Caudate (rh)": 50,
+#                 "Putamen (lh)": 12,
+#                 "Putamen (rh)": 51,
+#             }
 
 
-    def __len__(self):
-        return len(self.image_paths)
+#     def __len__(self):
+#         return len(self.image_paths)
 
-    def __getitem__(self, idx):
-        # Use cached image or load from disk
-        if self.cache:
-            in_im = self.cached_img[idx]
-            in_im = in_im.astype(np.float32) / 255.0
-            seg = self.cached_seg[idx]
+#     def __getitem__(self, idx):
+#         # Use cached image or load from disk
+#         if self.cache:
+#             in_im = self.cached_img[idx]
+#             in_im = in_im.astype(np.float32) / 255.0
+#             seg = self.cached_seg[idx]
             
-        elif self.sparse_path:
-            img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
-            img = img_seg['image']
-            seg = img_seg['seg']
+#         elif self.sparse_path:
+#             img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
+#             img = img_seg['image']
+#             seg = img_seg['seg']
 
-            in_im = []
-            for key, value in self.dementia_subcortical_indices.items():
-                if key in self.common_bb and self.common_bb[key] is not None:
-                    x0, x1 = self.common_bb[key][0][0], self.common_bb[key][1][0]
-                    y0, y1 = self.common_bb[key][0][1], self.common_bb[key][1][1]
-                    z0, z1 = self.common_bb[key][0][2], self.common_bb[key][1][2]
+#             in_im = []
+#             for key, value in self.dementia_subcortical_indices.items():
+#                 if key in self.common_bb and self.common_bb[key] is not None:
+#                     x0, x1 = self.common_bb[key][0][0], self.common_bb[key][1][0]
+#                     y0, y1 = self.common_bb[key][0][1], self.common_bb[key][1][1]
+#                     z0, z1 = self.common_bb[key][0][2], self.common_bb[key][1][2]
 
-                    # Create a mask for the current subcortical region
-                    region_mask = (seg == value)
+#                     # Create a mask for the current subcortical region
+#                     region_mask = (seg == value)
 
-                    # Apply BB and then mask (if you only want the region within the BB)
-                    cropped_region = img[x0:x1, y0:y1, z0:z1]
-                    cropped_mask = region_mask[x0:x1, y0:y1, z0:z1]
-                    in_im.append(cropped_region * cropped_mask) # Element-wise multiplication
-            in_im = np.array(in_im)
-            in_im = in_im.astype(np.float32) / 255.0
+#                     # Apply BB and then mask (if you only want the region within the BB)
+#                     cropped_region = img[x0:x1, y0:y1, z0:z1]
+#                     cropped_mask = region_mask[x0:x1, y0:y1, z0:z1]
+#                     in_im.append(cropped_region * cropped_mask) # Element-wise multiplication
+#             in_im = np.array(in_im)
+#             in_im = in_im.astype(np.float32) / 255.0
 
-        else:
-            img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
-            in_im = img_seg['image']
-            in_im = in_im.astype(np.float32) / 255.0
-            seg = img_seg['seg']
+#         else:
+#             img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
+#             in_im = img_seg['image']
+#             in_im = in_im.astype(np.float32) / 255.0
+#             seg = img_seg['seg']
 
 
-        out_im = in_im.copy()
-        # in_im = np.array(nib.load(self.image_paths[idx]).get_fdata(), dtype=np.float32)
+#         out_im = in_im.copy()
+#         # in_im = np.array(nib.load(self.image_paths[idx]).get_fdata(), dtype=np.float32)
         
-        # Apply data augmentation if a transform is provided
-        if self.transform:
+#         # Apply data augmentation if a transform is provided
+#         if self.transform:
             
-            # TorchIO expects a dictionary with 'image' as a key and a 4D tensor (C, H, W, D)
-            # Here, we first convert the image to a tensor with a channel dimension.
-            image_tensor = torch.tensor(in_im, dtype=torch.float32).unsqueeze(0)
+#             # TorchIO expects a dictionary with 'image' as a key and a 4D tensor (C, H, W, D)
+#             # Here, we first convert the image to a tensor with a channel dimension.
+#             image_tensor = torch.tensor(in_im, dtype=torch.float32).unsqueeze(0)
             
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", UserWarning)
-                subject = tio.Subject(image=tio.ScalarImage(tensor=image_tensor))
-            subject = self.transform(subject)
-            # Get the augmented image back as a numpy array, and remove the extra channel if necessary.
-            out_im = subject.image.data.squeeze(0).numpy()
+#             with warnings.catch_warnings():
+#                 warnings.simplefilter("ignore", UserWarning)
+#                 subject = tio.Subject(image=tio.ScalarImage(tensor=image_tensor))
+#             subject = self.transform(subject)
+#             # Get the augmented image back as a numpy array, and remove the extra channel if necessary.
+#             out_im = subject.image.data.squeeze(0).numpy()
             
 
-        # Convert image, age, and label to tensors.
-        # Note: The image is converted again if no transform was applied.
-        in_im = torch.tensor(in_im, dtype=torch.float32)  # Ensure a channel dimension
-        seg = torch.tensor(seg, dtype=torch.float32)  # Ensure a channel dimension
-        out_im = torch.tensor(out_im, dtype=torch.float32)  # Ensure a channel dimension
-        if len(in_im.shape) < 4:
-            in_im = in_im.unsqueeze(0)
-            seg = seg.unsqueeze(0)
-            out_im = out_im.unsqueeze(0)
+#         # Convert image, age, and label to tensors.
+#         # Note: The image is converted again if no transform was applied.
+#         in_im = torch.tensor(in_im, dtype=torch.float32)  # Ensure a channel dimension
+#         seg = torch.tensor(seg, dtype=torch.float32)  # Ensure a channel dimension
+#         out_im = torch.tensor(out_im, dtype=torch.float32)  # Ensure a channel dimension
+#         if len(in_im.shape) < 4:
+#             in_im = in_im.unsqueeze(0)
+#             seg = seg.unsqueeze(0)
+#             out_im = out_im.unsqueeze(0)
 
-        # Load and possibly augment age
-        age = self.ages[idx]
-        if self.transform_age:
-            age = age + np.random.uniform(-self.transform_age, self.transform_age)
+#         # Load and possibly augment age
+#         age = self.ages[idx]
+#         if self.transform_age:
+#             age = age + np.random.uniform(-self.transform_age, self.transform_age)
 
-        # Load label
-        label = self.labels[idx]
+#         # Load label
+#         label = self.labels[idx]
 
-        age = torch.tensor(age, dtype=torch.float32).unsqueeze(0)
-        label = torch.tensor(label, dtype=torch.float32).unsqueeze(0)
+#         age = torch.tensor(age, dtype=torch.float32).unsqueeze(0)
+#         label = torch.tensor(label, dtype=torch.float32).unsqueeze(0)
 
 
-        if self.return_seg:
-            sample = {
-                'input': out_im,
-                'output': in_im,
-                'age': age,
-                'seg': seg,
-                'label': label
-            }
-        else:
-            sample = {
-                'input': out_im,
-                'output': in_im,
-                'age': age,
-                'label': label
-            }
-        return sample
+#         if self.return_seg:
+#             sample = {
+#                 'input': out_im,
+#                 'output': in_im,
+#                 'age': age,
+#                 'seg': seg,
+#                 'label': label
+#             }
+#         else:
+#             sample = {
+#                 'input': out_im,
+#                 'output': in_im,
+#                 'age': age,
+#                 'label': label
+#             }
+#         return sample
     
 
-class BrainSVFDataset(Dataset):
-    def __init__(self, svf_paths, ages_dif, labels):
-        """
-        Parameters:
-            image_paths (list or np.array): Paths to the MRI image files.
-            ages (list or np.array): Corresponding ages.
-            labels (list or np.array): Labels (0 or 1) for each sample.
-        """
-        self.svf_paths = np.array(svf_paths)
-        self.ages_dif = np.array(ages_dif)
-        self.labels = np.array(labels)
+# class BrainSVFDataset(Dataset):
+#     def __init__(self, svf_paths, ages_dif, labels):
+#         """
+#         Parameters:
+#             image_paths (list or np.array): Paths to the MRI image files.
+#             ages (list or np.array): Corresponding ages.
+#             labels (list or np.array): Labels (0 or 1) for each sample.
+#         """
+#         self.svf_paths = np.array(svf_paths)
+#         self.ages_dif = np.array(ages_dif)
+#         self.labels = np.array(labels)
 
-    def __len__(self):
-        return len(self.svf_paths)
+#     def __len__(self):
+#         return len(self.svf_paths)
 
-    def __getitem__(self, idx):
+#     def __getitem__(self, idx):
 
-        svf = np.load(self.svf_paths[idx])
-        svf = torch.tensor(svf, dtype=torch.float32).permute((-1, 1, 2, 0))
+#         svf = np.load(self.svf_paths[idx])
+#         svf = torch.tensor(svf, dtype=torch.float32).permute((-1, 1, 2, 0))
 
-        age_dif = torch.tensor(self.ages_dif[idx], dtype=torch.float32).unsqueeze(0)
-        label = torch.tensor(self.labels[idx], dtype=torch.float32).unsqueeze(0)
+#         age_dif = torch.tensor(self.ages_dif[idx], dtype=torch.float32).unsqueeze(0)
+#         label = torch.tensor(self.labels[idx], dtype=torch.float32).unsqueeze(0)
 
-        return {'svf': svf,
-                'age_dif': age_dif,
-                'label': label}
+#         return {'svf': svf,
+#                 'age_dif': age_dif,
+#                 'label': label}
     
 
-class SubcorticalSVFDataset(Dataset):
-    def __init__(self, svf_paths, ages_dif, labels, mri_svf_sessions, sparse_path):
-        """
-        Parameters:
-            image_paths (list or np.array): Paths to the MRI image files.
-            ages (list or np.array): Corresponding ages.
-            labels (list or np.array): Labels (0 or 1) for each sample.
-        """
-        self.svf_paths = np.array(svf_paths)
-        self.ages_dif = np.array(ages_dif)
-        self.labels = np.array(labels)
-        self.sparse_path = sparse_path
-        self.mri_svf_sessions = mri_svf_sessions
+# class SubcorticalSVFDataset(Dataset):
+#     def __init__(self, svf_paths, ages_dif, labels, mri_svf_sessions, sparse_path):
+#         """
+#         Parameters:
+#             image_paths (list or np.array): Paths to the MRI image files.
+#             ages (list or np.array): Corresponding ages.
+#             labels (list or np.array): Labels (0 or 1) for each sample.
+#         """
+#         self.svf_paths = np.array(svf_paths)
+#         self.ages_dif = np.array(ages_dif)
+#         self.labels = np.array(labels)
+#         self.sparse_path = sparse_path
+#         self.mri_svf_sessions = mri_svf_sessions
 
-        with open(self.sparse_path, 'r') as f:
-            self.common_bb = json.load(f)
-        self.common_dim = np.array(self.common_bb['Hippocampus (lh)'][1]) - np.array(self.common_bb['Hippocampus (lh)'][0])
-        self.dementia_subcortical_indices = {
-            "Hippocampus (lh)": 17,
-            "Hippocampus (rh)": 53,
-            "Amygdala (lh)": 18,
-            "Amygdala (rh)": 54,
-            "Thalamus (lh)": 10,
-            "Thalamus (rh)": 49,
-            "Caudate (lh)": 11,
-            "Caudate (rh)": 50,
-            "Putamen (lh)": 12,
-            "Putamen (rh)": 51,
-        }
+#         with open(self.sparse_path, 'r') as f:
+#             self.common_bb = json.load(f)
+#         self.common_dim = np.array(self.common_bb['Hippocampus (lh)'][1]) - np.array(self.common_bb['Hippocampus (lh)'][0])
+#         self.dementia_subcortical_indices = {
+#             "Hippocampus (lh)": 17,
+#             "Hippocampus (rh)": 53,
+#             "Amygdala (lh)": 18,
+#             "Amygdala (rh)": 54,
+#             "Thalamus (lh)": 10,
+#             "Thalamus (rh)": 49,
+#             "Caudate (lh)": 11,
+#             "Caudate (rh)": 50,
+#             "Putamen (lh)": 12,
+#             "Putamen (rh)": 51,
+#         }
 
-    def __len__(self):
-        return len(self.svf_paths)
+#     def __len__(self):
+#         return len(self.svf_paths)
 
-    def __getitem__(self, idx):
+#     def __getitem__(self, idx):
 
-        whole_svf = np.load(self.svf_paths[idx])
-        # whole_svf = torch.tensor(whole_svf, dtype=torch.float32).permute((-1, 1, 2, 0))
+#         whole_svf = np.load(self.svf_paths[idx])
+#         # whole_svf = torch.tensor(whole_svf, dtype=torch.float32).permute((-1, 1, 2, 0))
 
-        seg_1 = pad_mri_to_shape(np.load(self.mri_svf_sessions[idx,0], allow_pickle=True).item()['seg'], target_shape=(96*2, 112*2, 80*2))[::2, ::2, ::2]
-        seg_2 = pad_mri_to_shape(np.load(self.mri_svf_sessions[idx,1], allow_pickle=True).item()['seg'], target_shape=(96*2, 112*2, 80*2))[::2, ::2, ::2]
+#         seg_1 = pad_mri_to_shape(np.load(self.mri_svf_sessions[idx,0], allow_pickle=True).item()['seg'], target_shape=(96*2, 112*2, 80*2))[::2, ::2, ::2]
+#         seg_2 = pad_mri_to_shape(np.load(self.mri_svf_sessions[idx,1], allow_pickle=True).item()['seg'], target_shape=(96*2, 112*2, 80*2))[::2, ::2, ::2]
 
-        #############
-        # img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
-        # img = img_seg['image']
-        # seg = img_seg['seg']
+#         #############
+#         # img_seg = np.load(self.image_paths[idx], allow_pickle=True).item()
+#         # img = img_seg['image']
+#         # seg = img_seg['seg']
 
-        svf = []
-        for key, value in self.dementia_subcortical_indices.items():
-            if key in self.common_bb and self.common_bb[key] is not None:
-                x0, x1 = self.common_bb[key][0][0]//2, self.common_bb[key][1][0]//2
-                y0, y1 = self.common_bb[key][0][1]//2, self.common_bb[key][1][1]//2
-                z0, z1 = self.common_bb[key][0][2]//2, self.common_bb[key][1][2]//2
+#         svf = []
+#         for key, value in self.dementia_subcortical_indices.items():
+#             if key in self.common_bb and self.common_bb[key] is not None:
+#                 x0, x1 = self.common_bb[key][0][0]//2, self.common_bb[key][1][0]//2
+#                 y0, y1 = self.common_bb[key][0][1]//2, self.common_bb[key][1][1]//2
+#                 z0, z1 = self.common_bb[key][0][2]//2, self.common_bb[key][1][2]//2
 
-                # Create a mask for the current subcortical region
-                region_mask = (seg_1 == value) + (seg_2 == value)
+#                 # Create a mask for the current subcortical region
+#                 region_mask = (seg_1 == value) + (seg_2 == value)
 
-                # Apply BB and then mask (if you only want the region within the BB)
-                cropped_region = whole_svf[x0:x1, y0:y1, z0:z1]
-                cropped_mask = region_mask[x0:x1, y0:y1, z0:z1]
-                svf.append(cropped_region * cropped_mask[..., np.newaxis]) # Element-wise multiplication
+#                 # Apply BB and then mask (if you only want the region within the BB)
+#                 cropped_region = whole_svf[x0:x1, y0:y1, z0:z1]
+#                 cropped_mask = region_mask[x0:x1, y0:y1, z0:z1]
+#                 svf.append(cropped_region * cropped_mask[..., np.newaxis]) # Element-wise multiplication
                 
-        svf = np.array(svf)
-        #############
+#         svf = np.array(svf)
+#         #############
 
-        svf = torch.tensor(svf, dtype=torch.float32).permute((0, -1, 2, 3, 1))
+#         svf = torch.tensor(svf, dtype=torch.float32).permute((0, -1, 2, 3, 1))
 
 
-        age_dif = torch.tensor(self.ages_dif[idx], dtype=torch.float32).unsqueeze(0)
-        label = torch.tensor(self.labels[idx], dtype=torch.float32).unsqueeze(0)
+#         age_dif = torch.tensor(self.ages_dif[idx], dtype=torch.float32).unsqueeze(0)
+#         label = torch.tensor(self.labels[idx], dtype=torch.float32).unsqueeze(0)
 
-        return {'svf': svf,
-                'age_dif': age_dif,
-                'label': label}
+#         return {'svf': svf,
+#                 'age_dif': age_dif,
+#                 'label': label}
     
     
     
@@ -421,7 +421,7 @@ class LookupNPZDataset(Dataset):
         self.batch_file = batch_file
 
         # Load data for this batch
-        npz_data = np.load(self.batch_file)
+        npz_data = np.load(self.batch_file, allow_pickle=True)
 
         self.images = np.array(npz_data["images"])
         self.guids = np.array(npz_data["GUID"])

@@ -5,17 +5,20 @@ import random
 from pathlib import Path
 import logging
 
-def prepare_mock_dataset(root_dir="./"):
+def prepare_mock_dataset(output_root="data/mock_dataset", image_shape=(1, 64, 64, 64)):
     """
     Prepares a mock dataset with random MRI volumes and metadata for testing.
+    Parameters:
+        output_root (str): Root directory to save the mock dataset.
+        image_shape (tuple): Shape of the mock MRI volumes (C, H, W, D).
     """
     logger = logging.getLogger(__name__)
     
     # -----------------------------
     # Settings
     # -----------------------------
-    output_root = Path(root_dir) / "data/mock_dataset"
-    output_root.mkdir(exist_ok=True)
+    output_root = Path(output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
 
     batch_specs = {
         "batched_adni": 2,   # 2 batches
@@ -23,7 +26,6 @@ def prepare_mock_dataset(root_dir="./"):
     }
 
     samples_per_batch = 5
-    image_shape = (1, 64, 64, 64)  # (C, H, W, D)
     metadata_rows = []
 
     # -----------------------------

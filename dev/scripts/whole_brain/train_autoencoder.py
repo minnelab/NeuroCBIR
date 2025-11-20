@@ -1,51 +1,44 @@
 import os
 import argparse
-import warnings
-
-import pandas as pd
-import torch
 from tqdm import main, tqdm
+from datetime import datetime
+import matplotlib.pyplot as plt
+import warnings
+import pandas as pd
+import logging
+import numpy as np
+
 from monai import transforms
 from monai.utils import set_determinism
-
-from torch.nn import L1Loss
 from monai.losses import PatchAdversarialLoss, PerceptualLoss
 from monai.networks.nets import AutoencoderKL, DiffusionModelUNet, PatchDiscriminator
 
-from model import GradientAccumulation, KLDivergenceLoss
-from utils import load_config_from_path
-
-
-from datetime import datetime
+import torch
 from torch.amp import autocast, GradScaler
-
-
-from training import AverageLoss
 from torch.utils.tensorboard import SummaryWriter
-import random
-from preprocessing import LookupNPZDataset, get_balanced_batch
-import matplotlib.pyplot as plt
-import warnings
-from utils.visualization import plot_mri_comparison
+from torch.nn import L1Loss
+
+from dev.model import GradientAccumulation, KLDivergenceLoss
+from dev.training import AverageLoss
+from dev.utils.visualization import plot_mri_comparison
+from dev.utils import load_config_from_path
+from dev.preprocessing import LookupNPZDataset, SequentialBatchIterator
 
 def main(config):
+    
     # Startup config
+    logging.info("Starting training with config: %s", config)
     seed = config["random_state"]
     set_determinism(seed)
     data_path = config["data_path"]
-    resume_path= config["resume_path"]
-    
-    
-    
-    # 
-    run_guid = datetime.now().strftime("%Y%m%d_%H%M%S")
-    logging_path = os.path.join(config["base_logging_path"], run_guid) # Logging path preparation    
+    resume_path= config["resume_path"]  
 
     # Load metadata
+    logging.info("Loading metadata...")
     index_ds = pd.read_csv(os.path.join(data_path,"dataset_index.csv"))
-    clinical_ds = pd.read_csv(os.path.join(data_path,"combined_metadata.csv"))
+    clinical_ds = pd.read_csv(config["metadata_file"])
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner") # Merge on the 'GUID' column
-    print(f"METADATA: Original rows: {len(metadata)}")
+    logging.info(f"METADATA: Original rows: {len(metadata)}")
 
     # First, ensure empty strings are treated as NaN
     metadata['subject'].replace('', pd.NA, inplace=True)
@@ -55,21 +48,11 @@ def main(config):
 
     # Optional: reset index
     metadata = metadata.reset_index(drop=True)
-    print(f"METADATA: Remaining rows: {len(metadata)}") # Check result
+    logging.debug(f"METADATA: Remaining rows: {len(metadata)}") # Check result
 
-
-    # # Training config
-    # num_workers = 0
-    # num_epochs = 500
-    # max_batch_size = 1
-    # batch_size = 8
-    # n_batches_per_file = 800
-    # lr = 1e-4
-    # adv_weight= 0.1
-    # perceptual_weight = 0.1
-    # kl_weight = 1e-7
 
     # VAE initialization
+    logging.info("Initializing models...")
     vae_params = config["vae_params"]
     autoencoder = AutoencoderKL(**vae_params).to(config["device"])
     
@@ -78,6 +61,7 @@ def main(config):
     discriminator = PatchDiscriminator(**dis_params).to(config["device"])
     
     # Prepare losses
+    logging.info("Preparing loss functions...")
     l1_loss_fn = L1Loss()
     kl_loss_fn = KLDivergenceLoss()
     adv_loss = PatchAdversarialLoss(criterion="least_squares")
@@ -108,6 +92,7 @@ def main(config):
     
     # Resume path
     if os.path.isfile(resume_path):
+        logging.info(f"Resuming training from checkpoint: {resume_path}")
         checkpoint = torch.load(resume_path)
         autoencoder.load_state_dict(checkpoint['autoencoder_state_dict'])
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -118,26 +103,40 @@ def main(config):
 
         start_epoch = checkpoint['epoch'] + 1
         total_counter = checkpoint['total_counter']
-        print(f"Resumed from epoch {start_epoch}")
+        logging.info(f"Resumed from epoch {start_epoch}")
     else:
+        logging.info("Starting training from scratch")
         start_epoch = 0
         total_counter = 0
 
     # New logging file
-    writer = SummaryWriter(log_dir=config["logging_path"])
+    writer = SummaryWriter(config["logging_path"])
     for epoch in range(start_epoch, config["num_epochs"]):
         # random.shuffle(batch_files)
         for batch_file in batch_files:
             dataset = LookupNPZDataset(metadata, batch_file=batch_file, use_segmentation=False)
-            total_batches = len(dataset) // config["max_batch_size"]
+            logging.info(f"Created dataset for batch_file: {batch_file} with {len(dataset)} samples")
+            batch_iter = SequentialBatchIterator(dataset, batch_size=config["max_batch_size"], device=config["device"])
+            total_batches = len(dataset) // config["batch_size"]
             progress_bar = tqdm(range(total_batches), total=total_batches, ncols=180)
             progress_bar.set_description(f'Epoch {epoch} - batch_file {batch_file}')
 
             step = 0
             for _ in progress_bar:  # loop over several batches per file
+                try:
+                    batch = next(batch_iter) # loop over several batches per file
+                    logging.debug(f"Processing batch at step {step}")
+                    logging.debug(f"Batch keys: {list(batch.keys())}")
+                except (ValueError, RuntimeError) as e:
+                    logging.warning(f"⚠️ Skipping batch at step {step} due to error: {e}")
+                    continue
+                
                 with autocast(device_type=config["device"], enabled=True):
-                    batch = get_balanced_batch(dataset, group_size=1, groups_per_batch=config["max_batch_size"], device=config["device"])
-                    images = batch["feats"].to(config["device"])
+                    images = batch["image"].to(config["device"])
+                    logging.debug(f"Images shape: {images.shape}")
+                    # batch = get_balanced_batch(dataset, group_size=1, groups_per_batch=config["max_batch_size"], device=config["device"])
+                    
+                    # images = batch["feats"].to(config["device"])
                     
                     reconstruction, z_mu, z_sigma = autoencoder(images)
 
@@ -175,11 +174,11 @@ def main(config):
                 gradacc_d.step(loss_d, step)
 
                 # Logging.
-                avgloss.put(os.path.join(logging_path, 'Generator/reconstruction_loss'),    rec_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Generator/perceptual_loss'),        per_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Generator/adverarial_loss'),        gen_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Generator/kl_regularization'),      kld_loss.item())
-                avgloss.put(os.path.join(logging_path, 'Discriminator/adverarial_loss'),    loss_d.item())
+                avgloss.put(os.path.join(config["logging_path"], 'Generator/reconstruction_loss'),    rec_loss.item())
+                avgloss.put(os.path.join(config["logging_path"], 'Generator/perceptual_loss'),        per_loss.item())
+                avgloss.put(os.path.join(config["logging_path"], 'Generator/adverarial_loss'),        gen_loss.item())
+                avgloss.put(os.path.join(config["logging_path"], 'Generator/kl_regularization'),      kld_loss.item())
+                avgloss.put(os.path.join(config["logging_path"], 'Discriminator/adverarial_loss'),    loss_d.item())
 
                 
                 if total_counter % 10 == 0:
@@ -188,8 +187,9 @@ def main(config):
                     
                     # Only log images every 200 steps
                     if total_counter % 200 == 0:
-                        gt_image = images[0].detach().cpu()
-                        recon_image = reconstruction[0].detach().cpu()
+                        gt_image = images[0].detach().cpu().float().numpy()
+                        recon_image = reconstruction[0].detach().cpu().float().numpy()
+
 
                         fig = plot_mri_comparison(gt_image, recon_image, title="GT vs Reconstruction")
                         writer.add_figure("Comparison/GroundTruth_vs_Reconstruction", fig, global_step=global_step)
@@ -213,17 +213,7 @@ def main(config):
             # Close previous writer
             writer.close()
             writer = SummaryWriter(log_dir=config["logging_path"])
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', required=True, help='Path to the config .py file')
-    args = parser.parse_args()
-
-    config = load_config_from_path(args.config)
-
-    main(config)
-    
+   
     
 if __name__ == "__main__":
     
