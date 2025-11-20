@@ -80,7 +80,7 @@ def main(config):
             max_extent = np.maximum(max_extent, extent)
 
     initial_common_extent = max_extent + 4  # Add margin of 2 voxels on each side
-    common_extent = np.ceil(initial_common_extent / 16) * 16
+    common_extent = np.ceil(initial_common_extent / 16) * 16 # Round up to nearest multiple of 16
     common_extent = common_extent.astype(int)
 
     common_bounding_boxes = {}
