@@ -1,4 +1,6 @@
 import datetime
+
+from tqdm import main
 from dev.preprocessing.prepare_mock_dataset import prepare_mock_dataset
 import torch
 import logging
@@ -11,6 +13,7 @@ logging.getLogger("matplotlib.font_manager").setLevel(logging.WARNING)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test BatchedNPZDataset loader")
     parser.add_argument("--verbose", action='store_true', help="Enable verbose output")
+    parser.add_argument("--skip-wb-vae", action='store_true', help="Skip whole-brain VAE training test")
     args = parser.parse_args()
     
     logging.basicConfig(
@@ -18,11 +21,16 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(message)s"
     )
     
+    # Mock dataset settings
+    image_shape=(32, 32, 32)
+    
     # Prepare mock dataset
     # Original dataset
-    prepare_mock_dataset("data/mock_dataset/original", image_shape=(32, 32, 32))
+    logging.info("Preparing mock dataset...")
+    prepare_mock_dataset("data/mock_dataset/original", image_shape=image_shape)
             
     # Test create_data_index script
+    logging.info("Testing data index creation script...")
     from dev.utils import load_config_from_path
     from dev.scripts.create_data_index_csv import main as create_data_index
     config_path = "dev/configs/data_index_config.py"
@@ -31,18 +39,69 @@ if __name__ == "__main__":
     
 
     # Test whole-brain autoencoder training script
+    if args.skip_wb_vae:
+        logging.info("Skipping whole-brain VAE training test as per argument.")
+    else:
+        logging.info("Testing whole-brain VAE training script...")
+        from dev.utils import load_config_from_path
+        from dev.scripts.whole_brain.train_autoencoder import main as train_wb_autoencoder 
+        from datetime import datetime
+        config_path = "dev/configs/whole_brain/train_autoencoder_config.py"
+        config = load_config_from_path(config_path)
+        config["num_epochs"] = 2  # Reduce epochs for testing
+        config["batch_size"] = 2  # Reduce batch size for testing
+        config["max_batch_size"] = 1  # Adjust max batch size accordingly
+        # Set dynamic paths
+        run_GUID = datetime.now().strftime("%Y%m%d_%H%M%S")
+        config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
+        train_wb_autoencoder(config)
+    
+    # Create bounding boxes
+    logging.info("Testing bounding box creation script...")
     from dev.utils import load_config_from_path
-    from dev.scripts.whole_brain.train_autoencoder import main as train_autoencoder 
-    from datetime import datetime
-    config_path = "dev/configs/whole_brain/train_autoencoder_config.py"
+    from dev.scripts.region_brain.create_bounding_boxes import main as create_bounding_boxes
+    config_path = "dev/configs/create_bb_config.py"
     config = load_config_from_path(config_path)
-    config["num_epochs"] = 2  # Reduce epochs for testing
-    config["batch_size"] = 2  # Reduce batch size for testing
-    config["max_batch_size"] = 1  # Adjust max batch size accordingly
+    config["input_shape"] = image_shape
+    config["subcortical_indices"] = {
+        "Left-Hippocampus": 0,
+        "Left-Cerebral-White-Matter": 1,}
+    create_bounding_boxes(config)
+    
+    # Create fake labels.csv
+    # This is provided as the real labels.csv is not in the repo
+    logging.info("Creating fake labels.csv for testing...")
+    import pandas as pd
+    import os
+
+    output_path = "data/mock_dataset/labels.csv"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    df = pd.DataFrame([
+        [0, 0, "Left-Hippocampus", 220, 216, 20, 0, 1],
+        [1, 1, "Left-Cerebral-White-Matter", 245, 245, 245, 0, 1],
+    ], columns=["LabelID", "MapID", "LabelName", "R", "G", "B", "A", "Use"])
+
+    # Save as tab-separated to match your example
+    df.to_csv(output_path, sep="\t", index=False)
+
+    logging.info(f"Fake labels.csv created at: {output_path}")
+    
+    # Test region-brain autoencoder training script
+    logging.info("Testing region-brain VAE training script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.region_brain.train_autoencoder import main as train_region_autoencoder
+    
+    
+    config = load_config_from_path(args.config)
+
     # Set dynamic paths
     run_GUID = datetime.now().strftime("%Y%m%d_%H%M%S")
     config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
-    train_autoencoder(config)
+    config["device"] = 'cuda' if torch.cuda.is_available() else 'cpu'
+    train_region_autoencoder(config)
     
+
+
+
 
         

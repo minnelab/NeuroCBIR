@@ -2,9 +2,9 @@
 import pandas as pd
 import os
 import numpy as np
-from preprocessing.load_dataset import list_files_with_extension
-from preprocessing.segmentation import get_common_bounding_box, extract_bounding_box
-from utils import load_config_from_path
+from dev.preprocessing.load_dataset import list_files_with_extension
+from dev.preprocessing.segmentation import get_common_bounding_box, extract_bounding_box
+from dev.utils import load_config_from_path
 import argparse
 
 def save_bounding_boxes_to_csv(bounding_boxes, common_bounding_boxes, common_extent, output_path):
@@ -54,11 +54,11 @@ def main(config):
     bounding_boxes = {}
     combined_segs = {key: np.zeros(input_shape, dtype=np.uint16) for key in subcortical_indices}
 
-    file_paths, file_names = list_files_with_extension(config["load_path"], config["extension"])
+    file_paths, file_names = list_files_with_extension(config["data_path"], config["extension"])
     file_paths, file_names = file_paths[:config["n_batches"]], file_names[:config["n_batches"]]
 
     for file_path, file_name in zip(file_paths, file_names):
-        file_to_load = os.path.join(config["load_path"], file_path, file_name)
+        file_to_load = os.path.join(config["data_path"], file_path, file_name)
         print(f"Processing {file_to_load}")
         data = np.load(file_to_load)
         segmentations = data["segmentations"]

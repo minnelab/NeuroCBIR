@@ -2,8 +2,8 @@
 
 config = {
     "random_state": 1234,
-    "load_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_OASIS3",
-    "output_csv": "data/bounding_boxes.csv",
+    "data_path": "data/mock_dataset/original/",
+    "output_csv": "data/mock_dataset/bounding_boxes.csv",
     "extension": ".npz",
     "n_batches": 3,
     "input_shape": [160, 176, 208],
@@ -179,16 +179,4 @@ config = {
         "ctx-rh-transversetemporal": 169,
         "ctx-rh-insula": 170
 },
-    # "subcortical_indices": {
-    #     "Hippocampus (lh)": 17,
-    #     "Hippocampus (rh)": 53,
-    #     "Amygdala (lh)": 18,
-    #     "Amygdala (rh)": 54,
-    #     "Thalamus (lh)": 10,
-    #     "Thalamus (rh)": 49,
-    #     "Caudate (lh)": 11,
-    #     "Caudate (rh)": 50,
-    #     "Putamen (lh)": 12,
-    #     "Putamen (rh)": 51,
-    # },
 }
