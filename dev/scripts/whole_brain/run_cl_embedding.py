@@ -3,6 +3,7 @@ import json
 import argparse
 import pandas as pd
 from tqdm import tqdm
+import logging
 
 import torch
 from monai.networks.nets.autoencoderkl import Encoder
@@ -72,7 +73,7 @@ def main(config):
     df_embs.columns = df_embs.columns.astype(str)
     output_path = os.path.join(config["output_dir"], "projected_embeddings.parquet")
     df_embs.to_parquet(output_path, index=False)
-    print(f"✅ Embeddings saved to {output_path}")
+    logging.info(f"✅ Embeddings saved to {output_path}")
 
 
 if __name__ == "__main__":

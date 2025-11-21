@@ -16,6 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip-wb-vae", action='store_true', help="Skip whole-brain VAE training test")
     parser.add_argument("--skip-region-vae", action='store_true', help="Skip region-brain VAE training test")
     parser.add_argument("--skip-wb-cl", action='store_true', help="Skip whole-brain contrastive model training test")
+    parser.add_argument("--skip-region-cl", action='store_true', help="Skip region-brain contrastive model training test")
     args = parser.parse_args()
     
     logging.basicConfig(
@@ -185,6 +186,57 @@ if __name__ == "__main__":
     config["device"] = "cpu"  # Use
     config["batch_size"] = 16  # Reduce batch size for testing
     run_region_vae_embedding(config)
+    
+    # Test create_data_index script
+    logging.info("Testing data index creation script region-brain CL embeddings...")
+    from dev.utils import load_config_from_path
+    config = {
+        "datasets": {
+            "OASIS": "data/mock_dataset/region_brain/batched_OASIS3",
+            "ADNI": "data/mock_dataset/region_brain/batched_adni",
+        },
+        "output_csv": "data/mock_dataset/region_brain/dataset_index.csv",
+        "id_key": "GUID"
+    }
+    create_data_index(config) 
+    
+    # Test train_cl_embedding script
+    logging.info("Testing region-brain contrastive model training script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.region_brain.train_contrastive_model import main as train_region_contrastive_model
+    config_path = "dev/configs/region_brain/train_contrastive_model.py"
+    config = load_config_from_path(config_path)
+    if args.skip_region_cl:
+        logging.info("Skipping region-brain CL training test as per argument.")
+        config["num_epochs"] = 0  # Reduce epochs for testing
+    else:
+        logging.info("Testing region-brain CL training script...")
+        config["num_epochs"] = 2  # Reduce epochs for testing
+        # Set dynamic paths
+    run_GUID = "cl_region_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
+    config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
+    config["device"] = "cpu"  # Use CPU for testing
+    config["groups_per_batch"] = 2  # Reduce groups per batch for testing
+    config["batch_size"] = 16  # Reduce batch size for testing
+    config["group_size"] = 3  # Reduce group size for testing
+    train_region_contrastive_model(config)
+    
+    # Test run_cl_embedding script
+    logging.info("Testing region-brain CL embedding script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.region_brain.run_cl_embedding import main as run_region_cl_embedding
+    config_path = "dev/configs/region_brain/run_cl_embedding.py"
+    config = load_config_from_path(config_path)
+    run_region_cl_embedding(config) 
+    
+    # Test run_cbir_eval script
+    logging.info("Testing region-brain CBIR evaluation script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.region_brain.run_cbir_eval import main as run_region_cbir_eval
+    config_path = "dev/configs/region_brain/run_cbir_eval.py"
+    config = load_config_from_path(config_path)
+    config["device"] = "cpu"  # Use CPU for testing
+    run_region_cbir_eval(config)
 
 
         

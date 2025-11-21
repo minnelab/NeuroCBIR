@@ -3,8 +3,8 @@ import json
 import numpy as np
 import pandas as pd
 import argparse
-from cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval_map, evaluate_bias_by_column
-from utils import load_config_from_path
+from dev.cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval_map, evaluate_bias_by_column
+from dev.utils import load_config_from_path
 
 def main(config):
 

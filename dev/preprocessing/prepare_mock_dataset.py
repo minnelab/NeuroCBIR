@@ -62,8 +62,8 @@ def prepare_mock_dataset(output_root="data/mock_dataset", image_shape=(1, 64, 64
                     metadata_rows.append({
                         "GUID": guid,
                         "project": guid.split("_")[0],
-                        "subject": f"{s+1:04d}",
-                        "timepoint": f"{n+1:04d}",
+                        "subject": f"s{s+1:04d}",
+                        "timepoint": f"t{n+1:04d}",
                         "scan_type": "T1",
                         "field_strength": 3,
                         "manufacturer": "SIEMENS",

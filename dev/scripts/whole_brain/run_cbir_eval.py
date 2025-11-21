@@ -3,6 +3,8 @@ import json
 import numpy as np
 import pandas as pd
 import argparse
+import logging
+
 from dev.cbir.evaluation import get_topk_guid_retrievals, evaluate_guid_retrieval_map, evaluate_bias_by_column
 from dev.utils import load_config_from_path
 
@@ -33,48 +35,47 @@ def main(config):
     # Compute retrieval
     retrieval_path = os.path.join(config["output_dir"], "retrieval.csv")
     if not os.path.isfile(retrieval_path):
-        print("Computing retrieved cases...")
+        logging.info("Computing retrieved cases...")
         top_k_max = max(config["top_k_values"])
         retrieval_df = get_topk_guid_retrievals(dataset, top_k=top_k_max)
-        print("✓ Done: retrieved cases.")
+        logging.info("✓ Done: retrieved cases.")
 
         # Save retrieval dataframe
         retrieval_df.to_csv(retrieval_path, index=False)
     else:
-        print("Loading retrieved cases...")
+        logging.info("Loading retrieved cases...")
         retrieval_df = pd.read_csv(retrieval_path)
 
     # Evaluate metrics and bias
     all_metrics = {"standard": {}, "bias": {}}
 
-    print("Starting evaluation of retrieval metrics...")
+    logging.info("Starting evaluation of retrieval metrics...")
     for k in config["top_k_values"]:
-        print(f"\nEvaluating top-{k} metrics...")
+        logging.info(f"\nEvaluating top-{k} metrics...")
 
         # Standard retrieval metric
-        print("  → Computing standard retrieval metrics...")
+        logging.info("  → Computing standard retrieval metrics...")
         all_metrics["standard"][f"top_{k}"] = evaluate_guid_retrieval_map(
             retrieval_df, clinical_ds, top_k=k, class_column=config["class_column"]
         )
-        print(f"    ✓ Done with top-{k} standard metrics.")
+        logging.info(f"    ✓ Done with top-{k} standard metrics.")
 
         # Bias metrics per specified column
         all_metrics["bias"][f"top_{k}"] = {}
         for col in config["bias_columns"]:
-            print(f"  → Evaluating bias by column: '{col}'...")
+            logging.info(f"  → Evaluating bias by column: '{col}'...")
             all_metrics["bias"][f"top_{k}"][col] = evaluate_bias_by_column(
                 retrieval_df, clinical_ds, top_k=k, class_column=config["class_column"], group_by_column=col
             )
-            print(f"    ✓ Done with bias evaluation for column '{col}' at top-{k}.")
-
-    print("\nAll evaluations complete.")
+            logging.info(f"    ✓ Done with bias evaluation for column '{col}' at top-{k}.")
+    logging.info("\nAll evaluations complete.")
 
     # Save metrics to JSON
     metrics_path = os.path.join(config["output_dir"], "metrics.json")
     with open(metrics_path, "w") as f:
         json.dump(all_metrics, f, indent=4)
 
-    print(f"✅ Evaluation complete. Results saved to: {config['output_dir']}")
+    logging.info(f"✅ Evaluation complete. Results saved to: {config['output_dir']}")
 
 
 if __name__ == "__main__":

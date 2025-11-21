@@ -4,6 +4,8 @@ import argparse
 import pandas as pd
 from datetime import datetime
 from tqdm import tqdm
+import random
+import time
 
 import torch
 from torch.amp import autocast, GradScaler
@@ -11,14 +13,21 @@ from torch.utils.tensorboard import SummaryWriter
 from monai.networks.nets.autoencoderkl import Encoder
 from monai.utils import set_determinism
 
-from model.contrastive_model import ContrastiveModel
-from model.losses import MultiPosConLoss
-from training import AverageLoss
-from preprocessing import RegionEmbBatchedDataset, get_balanced_batch
-from utils import load_config_from_path
-import random
-import time
+from dev.model.contrastive_model import ContrastiveModel
+from dev.model.losses import MultiPosConLoss
+from dev.training import AverageLoss
+from dev.preprocessing import RegionEmbBatchedDataset, get_balanced_batch
+from dev.utils import load_config_from_path
 
+def save_checkpoint(config, model, optimizer, grad_scaler, total_counter, epoch):
+    checkpoint = {
+                'epoch': epoch,
+                'total_counter': total_counter,
+                'state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scaler_state_dict': grad_scaler.state_dict(),
+            }
+    torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint.pth'))
 
 def create_encoder(config):
     encoder_params = config["encoder_params"]
@@ -71,11 +80,11 @@ def main(config):
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         grad_scaler.load_state_dict(checkpoint['scaler_state_dict'])
-        start_epoch = checkpoint['epoch'] + 1
+        start_epoch = epoch = checkpoint['epoch'] + 1
         total_counter = checkpoint['total_counter']
         print(f"Resumed from epoch {start_epoch}")
     else:
-        start_epoch = 0
+        start_epoch = epoch =0
         total_counter = 0
 
     # Load dataset
@@ -123,17 +132,12 @@ def main(config):
 
         
         if (epoch % 5 == 0): # and (epoch > 0):
-            checkpoint = {
-                'epoch': epoch,
-                'total_counter': total_counter,
-                'state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scaler_state_dict': grad_scaler.state_dict(),
-            }
-            torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint.pth'))
+            save_checkpoint(config, model, optimizer, grad_scaler, total_counter, epoch)
 
             writer.close()
             writer = SummaryWriter(log_dir=config["logging_path"])
+            
+    save_checkpoint(config, model, optimizer, grad_scaler, total_counter, epoch)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

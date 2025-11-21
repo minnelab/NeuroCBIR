@@ -7,8 +7,8 @@ from tqdm import tqdm
 import torch
 from monai.networks.nets.autoencoderkl import Encoder
 from monai.utils import set_determinism
-from model.contrastive_model import ContrastiveModel
 
+from dev.model.contrastive_model import ContrastiveModel
 from dev.preprocessing.load_dataset import RegionEmbBatchedDataset, SequentialBatchIterator
 from dev.utils import load_config_from_path
 

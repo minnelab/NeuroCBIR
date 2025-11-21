@@ -82,11 +82,11 @@ def main(config):
         checkpoint = torch.load(resume_path)
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        start_epoch = checkpoint['epoch'] + 1
+        start_epoch = epoch =checkpoint['epoch'] + 1
         total_counter = checkpoint['total_counter']
         logging.info(f"Resumed from epoch {start_epoch}")
     else:
-        start_epoch = 0
+        start_epoch = epoch = 0
         total_counter = 0
 
     # Load dataset

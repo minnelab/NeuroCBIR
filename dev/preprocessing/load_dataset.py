@@ -594,7 +594,7 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
     if not getattr(dataset, 'eligible_subjects', None):
         eligible_subjects = [s for s, idxs in subject_to_indices.items() if len(idxs) >= group_size]
         if len(eligible_subjects) < groups_per_batch:
-            raise ValueError(f"Not enough {group_key}s with ≥{group_size} samples.")
+            raise ValueError(f"Not enough {group_key}s for the requested batch size. Found eligible_subjects={len(eligible_subjects)}, need at least groups_per_batch={groups_per_batch}.")
         dataset.eligible_subjects = eligible_subjects
     else:
         eligible_subjects = dataset.eligible_subjects
