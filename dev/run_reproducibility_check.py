@@ -112,6 +112,15 @@ if __name__ == "__main__":
     config = load_config_from_path(config_path)
     run_wb_cl_embedding(config) 
     
+    # Test run_cbir_eval script
+    logging.info("Testing whole-brain CBIR evaluation script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.whole_brain.run_cbir_eval import main as run_wb_cbir_eval
+    config_path = "dev/configs/whole_brain/run_cbir_eval.py"
+    config = load_config_from_path(config_path)
+    config["device"] = "cpu"  # Use CPU for testing
+    run_wb_cbir_eval(config)
+    
     
     
     # >>> Region-brain <<<
