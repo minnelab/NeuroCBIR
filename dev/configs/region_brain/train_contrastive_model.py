@@ -7,7 +7,7 @@ config = load_config_from_path(os.path.join(os.path.dirname(__file__), "shared_c
 
 config.update({
     "resume_path": "",
-    "base_logging_path": "data/mock_dataset/logs/",
+    "base_logging_path": "dev/data_private/mock_dataset/logs/",
     "partition": "train",
     "num_epochs": 100000,
     "batch_size": 512,

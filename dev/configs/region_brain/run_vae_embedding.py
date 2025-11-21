@@ -2,12 +2,12 @@
 
 config = {
     "random_state": 1234,
-    "data_path": "data/mock_dataset/original/",
-    "save_path": "data/mock_dataset/region_brain/",
-    "metadata_file": "data/mock_dataset/metadata.csv", 
-    "labels_path": "data/mock_dataset/labels.csv",
-    "bb_path": "data/mock_dataset/bounding_boxes.csv",
-    "ckpt_path": "data/mock_dataset/logs/vae_region_brain/checkpoint-epoch-0.pth",
+    "data_path": "dev/data_private/mock_dataset/original/",
+    "save_path": "dev/data_private/mock_dataset/region_brain/",
+    "metadata_file": "dev/data_private/mock_dataset/metadata.csv", 
+    "labels_path": "dev/data_private/mock_dataset/labels.csv",
+    "bb_path": "dev/data_private/mock_dataset/bounding_boxes.csv",
+    "ckpt_path": "dev/data_private/mock_dataset/logs/vae_region_brain/checkpoint-epoch-0.pth",
     "use_old_state_dict": False,
     "n_structs": -1,
     "vae_params": {

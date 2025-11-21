@@ -20,6 +20,9 @@ data_private/
 
 data/pretrained_models/
 *.pth
+*.pt
+*retrieval.csv
+*.parquet
 
 # Distribution / packaging
 bin/

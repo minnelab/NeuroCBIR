@@ -1,12 +1,12 @@
 # config/shared_config.py
 
 config = {
-    "data_path": "data/mock_dataset",
-    "output_dir": "data/results/region_brain/eval_cl32/",
+    "data_path": "dev/data_private/mock_dataset",
+    "output_dir": "dev/data_private/results/region_brain/eval_cl32/",
     "dataset_index_file_name": "region_brain/dataset_index.csv",
     "metadata_file_name": "metadata.csv",
-    "labels_path": "data/mock_dataset/labels.csv",
-    "bb_path": "data/mock_dataset/bounding_boxes.csv",
+    "labels_path": "dev/data_private/mock_dataset/labels.csv",
+    "bb_path": "dev/data_private/mock_dataset/bounding_boxes.csv",
     "proj_params": {
         "input_shape": [8, 8, 8, 8],
         "projector_dims": [128],

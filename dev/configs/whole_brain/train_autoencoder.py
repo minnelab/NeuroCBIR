@@ -3,10 +3,10 @@
 config = {
     "random_state": 1234,
     "device": "cpu",  # "cuda" or "cpu"
-    "data_path": "data/mock_dataset/original/",
-    "metadata_file": "data/mock_dataset/metadata.csv",
-    "base_logging_path": "data/mock_dataset/logs/",
-    "resume_path": "", # e.g., "data/mock_dataset/logs/autoencoder/checkpoint_final.pth"
+    "data_path": "dev/data_private/mock_dataset/original/",
+    "metadata_file": "dev/data_private/mock_dataset/metadata.csv",
+    "base_logging_path": "dev/data_private/mock_dataset/logs/",
+    "resume_path": "", # e.g., "dev/data_private/mock_dataset/logs/autoencoder/checkpoint_final.pth"
     "num_epochs": 500,
     "max_batch_size": 1, # <-- must be divisible by "n_structs"
     "batch_size": 8, # <-- must be divisible by "max_batch_size"

@@ -1,8 +1,8 @@
 # config/shared_config.py
 
 config = {
-    "data_path": "data/mock_dataset",
-    "output_dir": "data/results/whole_brain/eval_cl16/",
+    "data_path": "dev/data_private/mock_dataset",
+    "output_dir": "dev/data_private/results/whole_brain/eval_cl16/",
     "dataset_index_file_name": "whole_brain/dataset_index.csv",
     "metadata_file_name": "metadata.csv",
     "batch_size": 32,

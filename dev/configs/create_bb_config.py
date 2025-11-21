@@ -2,8 +2,8 @@
 
 config = {
     "random_state": 1234,
-    "data_path": "data/mock_dataset/original/",
-    "output_csv": "data/mock_dataset/bounding_boxes.csv",
+    "data_path": "dev/data_private/mock_dataset/original/",
+    "output_csv": "dev/data_private/mock_dataset/bounding_boxes.csv",
     "extension": ".npz",
     "n_batches": 3,
     "input_shape": [160, 176, 208],

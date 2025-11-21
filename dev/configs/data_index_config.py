@@ -11,9 +11,9 @@
 # }
 config = {
     "datasets": {
-        "OASIS": "data/mock_dataset/original/batched_OASIS3",
-        "ADNI": "data/mock_dataset/original/batched_adni",
+        "OASIS": "dev/data_private/mock_dataset/original/batched_OASIS3",
+        "ADNI": "dev/data_private/mock_dataset/original/batched_adni",
     },
-    "output_csv": "data/mock_dataset/original/dataset_index.csv",
+    "output_csv": "dev/data_private/mock_dataset/original/dataset_index.csv",
     "id_key": "GUID"
 }

@@ -1,16 +1,12 @@
 import os
-import json
 import argparse
 import pandas as pd
 import joblib
 from sklearn.decomposition import PCA
-from utils import load_config_from_path
-
-import torch
 import umap
-import numpy as np
 
-from preprocessing import EmbBatchedDataset
+from dev.preprocessing import EmbBatchedDataset
+from dev.utils import load_config_from_path
 
 def main(config):
     seed=config["random_state"]

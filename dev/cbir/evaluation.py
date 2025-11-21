@@ -3,75 +3,75 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from tqdm import tqdm
 
-def calculate_metrics(hits_at_k: int, hits_at_least_one: int, total_queries: int, total_retrieved: int) -> dict:
-    """
-    Computes precision@k and success@k.
-    """
-    precision_at_k = hits_at_k / total_retrieved if total_retrieved else 0
-    success_at_k = hits_at_least_one / total_queries if total_queries else 0
+# def calculate_metrics(hits_at_k: int, hits_at_least_one: int, total_queries: int, total_retrieved: int) -> dict:
+#     """
+#     Computes precision@k and success@k.
+#     """
+#     precision_at_k = hits_at_k / total_retrieved if total_retrieved else 0
+#     success_at_k = hits_at_least_one / total_queries if total_queries else 0
 
-    return {
-        'precision@k': precision_at_k,
-        'success@k': success_at_k,
-        'num_evaluated': total_queries
-    }
+#     return {
+#         'precision@k': precision_at_k,
+#         'success@k': success_at_k,
+#         'num_evaluated': total_queries
+#     }
 
-def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label', evaluation_function=None) -> dict:
-    """
-    Computes precision@k and success@k using cosine similarity, but evaluating retrieval based on class match instead of subject_id.
+# def evaluate_similarity_retrieval(dataset: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label', evaluation_function=None) -> dict:
+#     """
+#     Computes precision@k and success@k using cosine similarity, but evaluating retrieval based on class match instead of subject_id.
     
-    Args:
-        dataset (pd.DataFrame): DataFrame with 'features' and class column (e.g., 'class_label').
-        top_k (int): Number of top matches to consider.
-        class_column (str): Name of the column representing the class.
+#     Args:
+#         dataset (pd.DataFrame): DataFrame with 'features' and class column (e.g., 'class_label').
+#         top_k (int): Number of top matches to consider.
+#         class_column (str): Name of the column representing the class.
 
-    Returns:
-        dict: Metrics (precision@k, success@k, number of evaluated queries).
-    """
-    if evaluation_function is None:
-        evaluation_function = evaluation_function_classification
+#     Returns:
+#         dict: Metrics (precision@k, success@k, number of evaluated queries).
+#     """
+#     if evaluation_function is None:
+#         evaluation_function = evaluation_function_classification
 
-    hits_at_k = 0
-    hits_at_least_one = 0
-    total_queries = 0
-    total_retrieved = 0
+#     hits_at_k = 0
+#     hits_at_least_one = 0
+#     total_queries = 0
+#     total_retrieved = 0
 
-    features_matrix = np.stack(dataset['features'].values)
+#     features_matrix = np.stack(dataset['features'].values)
 
-    for i in range(len(dataset)):
-        query = dataset.iloc[i]
-        query_class = query[class_column]
-        features = query['features'].reshape(1, -1)
+#     for i in range(len(dataset)):
+#         query = dataset.iloc[i]
+#         query_class = query[class_column]
+#         features = query['features'].reshape(1, -1)
 
-        # Check if there are enough records of this class
-        class_records = dataset[dataset[class_column] == query_class]
-        if len(class_records)-1 < top_k:
-            continue  # Skip if not enough records of this class
+#         # Check if there are enough records of this class
+#         class_records = dataset[dataset[class_column] == query_class]
+#         if len(class_records)-1 < top_k:
+#             continue  # Skip if not enough records of this class
 
-        similarities = cosine_similarity(features, features_matrix)[0]
-        similarities[i] = -1  # Exclude self
+#         similarities = cosine_similarity(features, features_matrix)[0]
+#         similarities[i] = -1  # Exclude self
 
-        top_k_indices = np.argsort(similarities)[::-1][:top_k]
-        top_k_classes = dataset.iloc[top_k_indices][class_column].values
+#         top_k_indices = np.argsort(similarities)[::-1][:top_k]
+#         top_k_classes = dataset.iloc[top_k_indices][class_column].values
 
-        # Evaluation
-        hits = evaluation_function(query_class, top_k_classes)
-        if hits > 0:
-            hits_at_least_one += 1
-        hits_at_k += hits
+#         # Evaluation
+#         hits = evaluation_function(query_class, top_k_classes)
+#         if hits > 0:
+#             hits_at_least_one += 1
+#         hits_at_k += hits
 
-        total_queries += 1
-        total_retrieved += top_k
+#         total_queries += 1
+#         total_retrieved += top_k
 
-    return calculate_metrics(hits_at_k, hits_at_least_one, total_queries, total_retrieved)
+#     return calculate_metrics(hits_at_k, hits_at_least_one, total_queries, total_retrieved)
 
-def evaluation_function_classification(query_class, top_k_classes):
-    hits = np.sum(top_k_classes == query_class)
-    return hits
+# def evaluation_function_classification(query_class, top_k_classes):
+#     hits = np.sum(top_k_classes == query_class)
+#     return hits
 
-def evaluation_function_regression(query_class, top_k_classes):
-    hits = np.sum(top_k_classes <= query_class)
-    return hits
+# def evaluation_function_regression(query_class, top_k_classes):
+#     hits = np.sum(top_k_classes <= query_class)
+#     return hits
 
 def get_topk_guid_retrievals(dataset: pd.DataFrame, top_k: int = 3, feature_column: str = 'features', guid_column: str = 'GUID') -> pd.DataFrame:
     """
@@ -149,59 +149,59 @@ def retrieve_topk_for_queries(
     return pd.DataFrame(retrievals, columns=col_names)
 
 
-def evaluate_guid_retrieval(retrieval_df: pd.DataFrame, metadata_df: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
-    """
-    Compute retrieval metrics (precision@k, success@k) from top-k GUID retrieval DataFrame.
+# def evaluate_guid_retrieval(retrieval_df: pd.DataFrame, metadata_df: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
+#     """
+#     Compute retrieval metrics (precision@k, success@k) from top-k GUID retrieval DataFrame.
 
-    Args:
-        retrieval_df (pd.DataFrame): Output from get_topk_guid_retrievals().
-        metadata_df (pd.DataFrame): Original DataFrame that maps GUID to class.
-        top_k (int): Number of top similar entries to retrieve.
-        class_column (str): Column containing the class labels.
+#     Args:
+#         retrieval_df (pd.DataFrame): Output from get_topk_guid_retrievals().
+#         metadata_df (pd.DataFrame): Original DataFrame that maps GUID to class.
+#         top_k (int): Number of top similar entries to retrieve.
+#         class_column (str): Column containing the class labels.
 
-    Returns:
-        dict: Retrieval evaluation metrics.
-    """
-    guid_to_class = metadata_df.set_index("GUID")[class_column].to_dict()
+#     Returns:
+#         dict: Retrieval evaluation metrics.
+#     """
+#     guid_to_class = metadata_df.set_index("GUID")[class_column].to_dict()
 
-    hits_at_k = 0
-    hits_at_least_one = 0
-    total_queries = 0
+#     hits_at_k = 0
+#     hits_at_least_one = 0
+#     total_queries = 0
 
-    for _, row in retrieval_df.iterrows():
-        query_guid = row['query']
-        query_class = guid_to_class.get(query_guid, None)
+#     for _, row in retrieval_df.iterrows():
+#         query_guid = row['query']
+#         query_class = guid_to_class.get(query_guid, None)
 
-        if query_class is None:
-            continue
+#         if query_class is None:
+#             continue
 
-        # Check if there are enough records of this class
-        class_records = metadata_df[metadata_df[class_column] == query_class]
-        if len(class_records)-1 < top_k:
-            continue  # Skip if not enough records of this class
+#         # Check if there are enough records of this class
+#         class_records = metadata_df[metadata_df[class_column] == query_class]
+#         if len(class_records)-1 < top_k:
+#             continue  # Skip if not enough records of this class
 
-        retrieved_guids = row.values[1:top_k+1]
-        retrieved_classes = [guid_to_class.get(g) for g in retrieved_guids]
+#         retrieved_guids = row.values[1:top_k+1]
+#         retrieved_classes = [guid_to_class.get(g) for g in retrieved_guids]
 
-        valid_classes = [cls for cls in retrieved_classes if cls is not None]
+#         valid_classes = [cls for cls in retrieved_classes if cls is not None]
 
-        if not valid_classes:
-            continue
+#         if not valid_classes:
+#             continue
 
-        hits = sum([1 for cls in valid_classes if cls == query_class])
-        if hits > 0:
-            hits_at_least_one += 1
-        hits_at_k += hits
-        total_queries += 1
+#         hits = sum([1 for cls in valid_classes if cls == query_class])
+#         if hits > 0:
+#             hits_at_least_one += 1
+#         hits_at_k += hits
+#         total_queries += 1
 
-    precision_at_k = hits_at_k / (total_queries * top_k) if total_queries > 0 else 0.0
-    success_at_k = hits_at_least_one / total_queries if total_queries > 0 else 0.0
+#     precision_at_k = hits_at_k / (total_queries * top_k) if total_queries > 0 else 0.0
+#     success_at_k = hits_at_least_one / total_queries if total_queries > 0 else 0.0
 
-    return {
-        'precision@k': precision_at_k,
-        'success@k': success_at_k,
-        'evaluated_queries': total_queries
-    }
+#     return {
+#         'precision@k': precision_at_k,
+#         'success@k': success_at_k,
+#         'evaluated_queries': total_queries
+#     }
 
 def evaluate_guid_retrieval_map(retrieval_df: pd.DataFrame, metadata_df: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
     """

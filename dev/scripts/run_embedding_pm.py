@@ -3,17 +3,17 @@ This script is to extract the features from pretrained models, to perform the mu
 '''
 
 import argparse
-import json
 import os
-import torch
-import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-from monai.networks.nets.autoencoderkl import AutoencoderKL
+import logging
+
 from monai.utils import set_determinism
-from preprocessing.load_dataset import list_files_with_extension
-from utils import load_config_from_path
+import torch
+
+from dev.utils import load_config_from_path
+
 
 def process_batch(data, encoder, device, batch_size=16):
     """
@@ -72,12 +72,11 @@ def main(config):
     index_ds = pd.read_csv(os.path.join(data_path, config["dataset_index_file_name"]))
     clinical_ds = pd.read_csv(os.path.join(data_path, config["metadata_file_name"]))
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner") # Merge on the 'GUID' column
-    print(f"METADATA: Original rows: {len(metadata)}")
+    logging.info(f"METADATA: Original rows: {len(metadata)}")
     metadata['subject'].replace('', pd.NA, inplace=True) # First, ensure empty strings are treated as NaN
     metadata = metadata.dropna(subset=['subject']) # Then drop rows where subject is NaN
     metadata = metadata.reset_index(drop=True) # Reset index
-    print(f"METADATA: Remaining rows: {len(metadata)}") # Check result
-
+    logging.info(f"METADATA: Remaining rows: {len(metadata)}") # Check result
     # Load VAE
     encoder = config["pretrained_encoder"].to(device)
     encoder.eval()
@@ -92,8 +91,8 @@ def main(config):
     for batch_file in batch_files:
 
         # file_to_load = os.path.join(config["load_path"], file_path, file_name)
-        print(f"Processing {batch_file}")
-        data = np.load(batch_file)
+        logging.info(f"Processing {batch_file}")
+        data = np.load(batch_file, allow_pickle=True)
 
         embs_batch, ids_batch = process_batch(data=data,
                                               encoder=encoder,
@@ -114,7 +113,7 @@ def main(config):
     df_embs.columns = df_embs.columns.astype(str)
     output_path = os.path.join(config["output_dir"], "projected_embeddings.parquet")
     df_embs.to_parquet(output_path, index=False)
-    print(f"✅ Embeddings saved to {output_path}")
+    logging.info(f"✅ Embeddings saved to {output_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

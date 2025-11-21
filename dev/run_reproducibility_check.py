@@ -1,8 +1,4 @@
-import datetime
-
-from tqdm import main
 from dev.preprocessing.prepare_mock_dataset import prepare_mock_dataset
-import torch
 import logging
 import argparse
 import os
@@ -30,7 +26,7 @@ if __name__ == "__main__":
     # Prepare mock dataset
     # Original dataset
     logging.info("Preparing mock dataset...")
-    prepare_mock_dataset("data/mock_dataset", image_shape=image_shape)
+    prepare_mock_dataset("dev/data_private/mock_dataset", image_shape=image_shape)
             
     # Test create_data_index script
     logging.info("Testing data index creation script...")
@@ -68,7 +64,7 @@ if __name__ == "__main__":
     from dev.scripts.whole_brain.run_vae_embedding import main as run_wb_vae_embedding
     config_path = "dev/configs/whole_brain/run_vae_embedding.py"
     config = load_config_from_path(config_path)
-    config["ckpt_path"] = "data/mock_dataset/logs/vae_whole_brain/checkpoint-epoch-0.pth"
+    config["ckpt_path"] = "dev/data_private/mock_dataset/logs/vae_whole_brain/checkpoint-epoch-0.pth"
     config["device"] = "cpu"  # Use CPU for testing
     run_wb_vae_embedding(config)
     
@@ -77,10 +73,10 @@ if __name__ == "__main__":
     from dev.utils import load_config_from_path
     config = {
         "datasets": {
-            "OASIS": "data/mock_dataset/whole_brain/batched_OASIS3",
-            "ADNI": "data/mock_dataset/whole_brain/batched_adni",
+            "OASIS": "dev/data_private/mock_dataset/whole_brain/batched_OASIS3",
+            "ADNI": "dev/data_private/mock_dataset/whole_brain/batched_adni",
         },
-        "output_csv": "data/mock_dataset/whole_brain/dataset_index.csv",
+        "output_csv": "dev/data_private/mock_dataset/whole_brain/dataset_index.csv",
         "id_key": "GUID"
     }
     create_data_index(config) 
@@ -145,7 +141,7 @@ if __name__ == "__main__":
     import pandas as pd
     import os
 
-    output_path = "data/mock_dataset/labels.csv"
+    output_path = "dev/data_private/mock_dataset/labels.csv"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df = pd.DataFrame([
         [0, 0, "Left-Hippocampus", 220, 216, 20, 0, 1],
@@ -182,7 +178,7 @@ if __name__ == "__main__":
     from dev.scripts.region_brain.run_vae_embedding import main as run_region_vae_embedding
     config_path = "dev/configs/region_brain/run_vae_embedding.py"
     config = load_config_from_path(config_path)
-    config["ckpt_path"] = "data/mock_dataset/logs/vae_region_brain/checkpoint-epoch-0.pth"
+    config["ckpt_path"] = "dev/data_private/mock_dataset/logs/vae_region_brain/checkpoint-epoch-0.pth"
     config["device"] = "cpu"  # Use
     config["batch_size"] = 16  # Reduce batch size for testing
     run_region_vae_embedding(config)
@@ -192,10 +188,10 @@ if __name__ == "__main__":
     from dev.utils import load_config_from_path
     config = {
         "datasets": {
-            "OASIS": "data/mock_dataset/region_brain/batched_OASIS3",
-            "ADNI": "data/mock_dataset/region_brain/batched_adni",
+            "OASIS": "dev/data_private/mock_dataset/region_brain/batched_OASIS3",
+            "ADNI": "dev/data_private/mock_dataset/region_brain/batched_adni",
         },
-        "output_csv": "data/mock_dataset/region_brain/dataset_index.csv",
+        "output_csv": "dev/data_private/mock_dataset/region_brain/dataset_index.csv",
         "id_key": "GUID"
     }
     create_data_index(config) 
@@ -237,6 +233,15 @@ if __name__ == "__main__":
     config = load_config_from_path(config_path)
     config["device"] = "cpu"  # Use CPU for testing
     run_region_cbir_eval(config)
-
+    
+    # >>> Multi comparison check <<<
+    logging.info("Testing multi-comparison CBIR evaluation script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.run_embedding_pm import main as run_embedding_pm
+    config_path = "dev/data/multi_comp/resnet10/config/embedding_pm.py"
+    config = load_config_from_path(config_path)
+    run_embedding_pm(config)
+    config_path = "dev/data/multi_comp/resnet10/config/cbir_eval_config.py"
+    config = load_config_from_path(config_path)
 
         
