@@ -124,17 +124,3 @@ if __name__ == "__main__":
     config = load_config_from_path(args.config)
 
     main(config)
-
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True, help="Path to config .json")
-    args = parser.parse_args()
-
-    config = load_config_from_path(args.config)
-
-    # Set dynamic paths
-    config["device"] = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    main(config)
