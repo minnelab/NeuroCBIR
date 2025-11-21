@@ -3,13 +3,14 @@ import json
 import argparse
 import pandas as pd
 from tqdm import tqdm
-from utils import load_config_from_path
 
 import torch
 from monai.networks.nets.autoencoderkl import Encoder
 from monai.utils import set_determinism
-from model.contrastive_model import ContrastiveModel
-from preprocessing import EmbBatchedDataset, SequentialBatchIterator
+
+from dev.model.contrastive_model import ContrastiveModel
+from dev.utils import load_config_from_path
+from dev.preprocessing import EmbBatchedDataset, SequentialBatchIterator
 
 def create_encoder(config, device):
     encoder_params = config["encoder_params"]

@@ -9,7 +9,7 @@ config = {
     "proj_params": {
         "input_shape": [8, 20, 22, 26],
         "projector_dims": [128],
-        "final_dim": 16
+        "final_dim": 16 # Contrastive learning embedding dimension
     },
     "encoder_params": {
         "spatial_dims": 3,

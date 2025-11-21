@@ -104,7 +104,13 @@ if __name__ == "__main__":
     config["device"] = "cpu"  # Use CPU for testing
     train_wb_contrastive_model(config)
     
-    
+    # Test run_cl_embedding script
+    logging.info("Testing whole-brain CL embedding script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.whole_brain.run_cl_embedding import main as run_wb_cl_embedding
+    config_path = "dev/configs/whole_brain/run_cl_embedding.py"
+    config = load_config_from_path(config_path)
+    run_wb_cl_embedding(config) 
     
     
     
