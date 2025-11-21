@@ -1,32 +1,40 @@
 import os
 import argparse
 import warnings
-
+import random
+import matplotlib.pyplot as plt
+import warnings
 import pandas as pd
-from utils.visualization import plot_mri_comparison
-import torch
 from tqdm import tqdm
+from datetime import datetime
+
 from monai import transforms
 from monai.utils import set_determinism
-from torch.nn import L1Loss
 from monai.losses import PatchAdversarialLoss, PerceptualLoss
 from monai.networks.nets import AutoencoderKL, DiffusionModelUNet, PatchDiscriminator
 
-from model import GradientAccumulation, KLDivergenceLoss
-from datetime import datetime
 from torch.amp import autocast, GradScaler
-
-
-from training import AverageLoss
+import torch
+from torch.nn import L1Loss
 from torch.utils.tensorboard import SummaryWriter
-import random
-from preprocessing import LookupNPZDataset, get_balanced_batch
-import matplotlib.pyplot as plt
-import warnings
 
-from utils import load_config_from_path
-from preprocessing.load_dataset import SubCorBatDataset, SequentialBatchIterator
+from dev.utils import load_config_from_path
+from dev.preprocessing.load_dataset import SubCorBatDataset, SequentialBatchIterator
+from dev.preprocessing import LookupNPZDataset, get_balanced_batch
+from dev.model import GradientAccumulation, KLDivergenceLoss
+from dev.training import AverageLoss
+from dev.utils.visualization import plot_mri_comparison
 
+def save_checkpoint(config, autoencoder, discriminator, optimizer_g, optimizer_d, total_counter, epoch):
+    checkpoint = {
+                        'epoch': epoch,
+                        'total_counter': total_counter,
+                        'autoencoder_state_dict': autoencoder.state_dict(),
+                        'discriminator_state_dict': discriminator.state_dict(),
+                        'optimizer_g_state_dict': optimizer_g.state_dict(),
+                        'optimizer_d_state_dict': optimizer_d.state_dict(),
+                    }
+    torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint-epoch-{epoch}.pth'))
 
 
 def main(config):
@@ -99,11 +107,11 @@ def main(config):
         gradacc_g.grad_scaler.load_state_dict(checkpoint['scaler_g_state_dict'])
         gradacc_d.grad_scaler.load_state_dict(checkpoint['scaler_d_state_dict'])
 
-        start_epoch = checkpoint['epoch'] + 1
+        start_epoch = epoch = checkpoint['epoch'] + 1
         total_counter = checkpoint['total_counter']
         print(f"Resumed from epoch {start_epoch}")
     else:
-        start_epoch = 0
+        start_epoch = epoch = 0
         total_counter = 0
 
     # New logging file
@@ -188,20 +196,16 @@ def main(config):
                 total_counter += 1
 
             # Save the model
-            checkpoint = {
-                        'epoch': epoch,
-                        'total_counter': total_counter,
-                        'autoencoder_state_dict': autoencoder.state_dict(),
-                        'discriminator_state_dict': discriminator.state_dict(),
-                        'optimizer_g_state_dict': optimizer_g.state_dict(),
-                        'optimizer_d_state_dict': optimizer_d.state_dict(),
-                    }
-
-            torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint-epoch-{epoch}.pth'))
+            save_checkpoint(config, autoencoder, discriminator, optimizer_g, optimizer_d, total_counter, epoch)
 
             # Close previous writer
             writer.close()
             writer = SummaryWriter(log_dir=config["logging_path"])
+            
+    save_checkpoint(config, autoencoder, discriminator, optimizer_g, optimizer_d, total_counter, epoch)
+            
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

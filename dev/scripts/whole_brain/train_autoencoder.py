@@ -24,6 +24,18 @@ from dev.utils.visualization import plot_mri_comparison
 from dev.utils import load_config_from_path
 from dev.preprocessing import LookupNPZDataset, SequentialBatchIterator
 
+def save_checkpoint(config, autoencoder, discriminator, optimizer_g, optimizer_d, total_counter, epoch):
+    checkpoint = {
+                        'epoch': epoch,
+                        'total_counter': total_counter,
+                        'autoencoder_state_dict': autoencoder.state_dict(),
+                        'discriminator_state_dict': discriminator.state_dict(),
+                        'optimizer_g_state_dict': optimizer_g.state_dict(),
+                        'optimizer_d_state_dict': optimizer_d.state_dict(),
+                    }
+
+    torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint-epoch-{epoch}.pth'))
+
 def main(config):
     
     # Startup config
@@ -101,12 +113,12 @@ def main(config):
         gradacc_g.grad_scaler.load_state_dict(checkpoint['scaler_g_state_dict'])
         gradacc_d.grad_scaler.load_state_dict(checkpoint['scaler_d_state_dict'])
 
-        start_epoch = checkpoint['epoch'] + 1
+        start_epoch = epoch = checkpoint['epoch'] + 1
         total_counter = checkpoint['total_counter']
         logging.info(f"Resumed from epoch {start_epoch}")
     else:
         logging.info("Starting training from scratch")
-        start_epoch = 0
+        start_epoch = epoch = 0
         total_counter = 0
 
     # New logging file
@@ -199,20 +211,16 @@ def main(config):
                 total_counter += 1
 
              # Save the model
-            checkpoint = {
-                        'epoch': epoch,
-                        'total_counter': total_counter,
-                        'autoencoder_state_dict': autoencoder.state_dict(),
-                        'discriminator_state_dict': discriminator.state_dict(),
-                        'optimizer_g_state_dict': optimizer_g.state_dict(),
-                        'optimizer_d_state_dict': optimizer_d.state_dict(),
-                    }
-
-            torch.save(checkpoint, os.path.join(config["logging_path"], f'checkpoint-epoch-{epoch}.pth'))
+            save_checkpoint(config, autoencoder, discriminator, optimizer_g, optimizer_d, total_counter, epoch)
 
             # Close previous writer
             writer.close()
             writer = SummaryWriter(log_dir=config["logging_path"])
+            
+    # Save the model
+    save_checkpoint(config, autoencoder, discriminator, optimizer_g, optimizer_d, total_counter, epoch)
+
+
    
     
 if __name__ == "__main__":
