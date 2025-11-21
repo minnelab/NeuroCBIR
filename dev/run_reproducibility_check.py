@@ -56,7 +56,7 @@ if __name__ == "__main__":
     config["batch_size"] = 2  # Reduce batch size for testing
     config["max_batch_size"] = 1  # Adjust max batch size accordingly
     # Set dynamic paths
-    run_GUID = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_GUID = "whole_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
     config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
     train_wb_autoencoder(config)
     
@@ -66,11 +66,14 @@ if __name__ == "__main__":
     from dev.scripts.whole_brain.run_vae_embedding import main as run_wb_vae_embedding
     config_path = "dev/configs/whole_brain/run_vae_embedding.py"
     config = load_config_from_path(config_path)
-    config["batch_size"] = 2  # Reduce batch size for testing
-    config["device"] = 'cuda' if torch.cuda.is_available() else 'cpu'
+    config["ckpt_path"] = "data/mock_dataset/logs/whole_brain/checkpoint-epoch-0.pth"
+    config["device"] = "cpu"  # Use CPU for testing
+    run_wb_vae_embedding(config)
+    
+
     
     
-    # Region-brain
+    # >>> Region-brain <<<
     logging.info("Region-brain tests...")
     
     # Create bounding boxes
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     ], columns=["LabelID", "MapID", "LabelName", "R", "G", "B", "A", "Use"])
 
     # Save as tab-separated to match your example
-    df.to_csv(output_path, sep="\t", index=False)
+    df.to_csv(output_path, index=False)
 
     logging.info(f"Fake labels.csv created at: {output_path}")   
 
@@ -118,9 +121,18 @@ if __name__ == "__main__":
     config["batch_size"] = 2  # Reduce batch size for testing
     config["max_batch_size"] = 1  # Adjust max batch size accordingly
     # Set dynamic paths
-    run_GUID = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_GUID = "region_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
     config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
     train_region_autoencoder(config)
+    
+    # Test run_vae_embedding script
+    logging.info("Testing region-brain VAE embedding script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.region_brain.run_vae_embedding import main as run_region_vae_embedding
+    config_path = "dev/configs/region_brain/run_vae_embedding.py"
+    config = load_config_from_path(config_path)
+    config["ckpt_path"] = "data/mock_dataset/logs/region_brain/checkpoint-epoch-0.pth"
+    config["device"] = "cpu"  # Use
 
 
         

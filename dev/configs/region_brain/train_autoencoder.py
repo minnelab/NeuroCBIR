@@ -4,6 +4,7 @@ config = {
     "random_state": 1234,
     "device": "cpu",  # "cuda" or "cpu"
     "data_path": "data/mock_dataset/original/",
+    "metadata_file": "data/mock_dataset/original/metadata.csv",
     "base_logging_path": "data/mock_dataset/logs/",
     "labels_path": "data/mock_dataset/labels.csv",
     "bb_path": "data/mock_dataset/bounding_boxes.csv",
