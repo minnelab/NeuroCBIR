@@ -2,12 +2,12 @@
 
 config = {
     "random_state": 1234,
-    "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/original/",
-    "save_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/",
-    "metadata_file": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/combined_metadata.csv", 
-    "labels_path": "data/labels.csv",
-    "bb_path": "data/bounding_boxes.csv",
-    "ckpt_path": "/cephyr/users/felixnie/Alvis/logs/20250725_110120/checkpoint-epoch-12.pth",
+    "data_path": "data/mock_dataset/original/",
+    "save_path": "data/mock_dataset/region_brain/",
+    "metadata_file": "data/mock_dataset/original/metadata.csv", 
+    "labels_path": "data/mock_dataset/labels.csv",
+    "bb_path": "data/mock_dataset/bounding_boxes.csv",
+    "ckpt_path": "data/mock_dataset/logs/region_brain/checkpoint-epoch-0.pth",
     "use_old_state_dict": False,
     "n_structs": -1,
     "vae_params": {

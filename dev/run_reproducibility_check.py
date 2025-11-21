@@ -133,6 +133,8 @@ if __name__ == "__main__":
     config = load_config_from_path(config_path)
     config["ckpt_path"] = "data/mock_dataset/logs/region_brain/checkpoint-epoch-0.pth"
     config["device"] = "cpu"  # Use
+    config["batch_size"] = 16  # Reduce batch size for testing
+    run_region_vae_embedding(config)
 
 
         

@@ -702,7 +702,7 @@ class SubCorBatDataset(Dataset):
         self.batch_file = batch_file
 
         # Load data for this batch
-        npz_data = np.load(self.batch_file)
+        npz_data = np.load(self.batch_file, allow_pickle=True)
         self.images = np.array(npz_data["images"])
         self.guids = np.array(npz_data["GUID"])
         self.segmentations = np.array(npz_data["segmentations"])

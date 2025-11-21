@@ -7,8 +7,9 @@ import pandas as pd
 from tqdm import tqdm
 from monai.networks.nets.autoencoderkl import AutoencoderKL
 from monai.utils import set_determinism
-from preprocessing.load_dataset import SubCorBatDataset, SequentialBatchIterator
-from utils import load_config_from_path
+from dev.preprocessing.load_dataset import SubCorBatDataset, SequentialBatchIterator
+from dev.utils import load_config_from_path
+import logging
 
 def load_vae_model(config, device, ckpt_path = None, use_old_state_dict = False):
     # VAE initialization
@@ -23,10 +24,10 @@ def load_vae_model(config, device, ckpt_path = None, use_old_state_dict = False)
         # Load only the autoencoder weights
         if use_old_state_dict:
             autoencoder.load_old_state_dict(checkpoint[ckpt_key])
-            print("Loaded weights using load_old_state_dict().")
+            logging.info("Loaded weights using load_old_state_dict().")
         else:
             autoencoder.load_state_dict(checkpoint[ckpt_key])
-            print("Loaded weights using load_state_dict().")
+            logging.info("Loaded weights using load_state_dict().")
 
     return autoencoder
 
@@ -65,12 +66,11 @@ def main(config):
     index_ds = pd.read_csv(os.path.join(data_path,"dataset_index.csv"))
     clinical_ds = pd.read_csv(config["metadata_file"])
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner") # Merge on the 'GUID' column
-    print(f"METADATA: Original rows: {len(metadata)}")
+    logging.info(f"METADATA: Original rows: {len(metadata)}")
     metadata['subject'].replace('', pd.NA, inplace=True) # First, ensure empty strings are treated as NaN
     metadata = metadata.dropna(subset=['subject']) # Then drop rows where subject is NaN
     metadata = metadata.reset_index(drop=True) # Reset index
-    print(f"METADATA: Remaining rows: {len(metadata)}") # Check result
-
+    logging.info(f"METADATA: Remaining rows: {len(metadata)}") # Check result
     # Load labels and bounding boxes for cortical/subcortical structures
     labels_df = pd.read_csv(config["labels_path"])
     bb_df = pd.read_csv(config["bb_path"])
@@ -90,7 +90,7 @@ def main(config):
     for batch_file in batch_files:
         output_filename = os.path.join(config["save_path"], batch_file.split(data_path)[-1])
         if os.path.isfile(output_filename):
-            print(f"This file already exists: {output_filename}.")
+            logging.info(f"This file already exists: {output_filename}.")
             continue
 
         z_mu_batch = []
@@ -107,7 +107,7 @@ def main(config):
             try:
                 sample = next(batch_iter) # loop over several batches per file
             except (ValueError, RuntimeError) as e:
-                print(f"⚠️ Skipping batch at step {step} due to error: {e}")
+                logging.warning(f"⚠️ Skipping batch at step {step} due to error: {e}")
                 continue
 
             z_mu, guid, struct_names, struct_map_id = process_batch(
@@ -126,7 +126,7 @@ def main(config):
         # Save embeddings
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)  # <-- Ensure directory exists
         np.savez_compressed(output_filename, mus=z_mu_batch, GUID=guid_batch, struct_name=struct_struct_name_batch, MapID=struct_map_id_batch)
-        print(f"Saved: {output_filename} with {len(z_mu_batch)} samples.")
+        logging.info(f"Saved: {output_filename} with {len(z_mu_batch)} samples.")
 
 
 if __name__ == "__main__":
