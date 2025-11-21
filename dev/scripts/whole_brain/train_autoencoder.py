@@ -6,12 +6,10 @@ import matplotlib.pyplot as plt
 import warnings
 import pandas as pd
 import logging
-import numpy as np
 
-from monai import transforms
 from monai.utils import set_determinism
 from monai.losses import PatchAdversarialLoss, PerceptualLoss
-from monai.networks.nets import AutoencoderKL, DiffusionModelUNet, PatchDiscriminator
+from monai.networks.nets import AutoencoderKL, PatchDiscriminator
 
 import torch
 from torch.amp import autocast, GradScaler

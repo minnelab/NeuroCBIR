@@ -4,8 +4,6 @@ import argparse
 import pandas as pd
 from datetime import datetime
 from tqdm import tqdm
-import random
-import time
 
 import torch
 from torch.amp import autocast, GradScaler

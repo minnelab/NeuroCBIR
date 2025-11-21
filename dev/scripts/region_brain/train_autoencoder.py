@@ -1,17 +1,15 @@
 import os
 import argparse
 import warnings
-import random
 import matplotlib.pyplot as plt
 import warnings
 import pandas as pd
 from tqdm import tqdm
 from datetime import datetime
 
-from monai import transforms
 from monai.utils import set_determinism
 from monai.losses import PatchAdversarialLoss, PerceptualLoss
-from monai.networks.nets import AutoencoderKL, DiffusionModelUNet, PatchDiscriminator
+from monai.networks.nets import AutoencoderKL, PatchDiscriminator
 
 from torch.amp import autocast, GradScaler
 import torch
@@ -20,7 +18,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dev.utils import load_config_from_path
 from dev.preprocessing.load_dataset import SubCorBatDataset, SequentialBatchIterator
-from dev.preprocessing import LookupNPZDataset, get_balanced_batch
 from dev.model import GradientAccumulation, KLDivergenceLoss
 from dev.training import AverageLoss
 from dev.utils.visualization import plot_mri_comparison
