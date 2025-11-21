@@ -4,8 +4,8 @@ config = {
     "data_path": "data/mock_dataset/original/",
     "save_path": "data/mock_dataset/whole_brain/",
     "extension": ".npz",
-    "metadata_file": "data/mock_dataset/original/metadata.csv",
-    "ckpt_path": "data/mock_dataset/logs/whole_brain/checkpoint-epoch-0.pth",
+    "metadata_file": "data/mock_dataset/metadata.csv",
+    "ckpt_path": "data/mock_dataset/logs/vae_whole_brain/checkpoint-epoch-0.pth",
     "ckpt_key": "autoencoder_state_dict",
     "use_old_state_dict": False,
     "vae_params": {

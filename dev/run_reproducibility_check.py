@@ -15,6 +15,7 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action='store_true', help="Enable verbose output")
     parser.add_argument("--skip-wb-vae", action='store_true', help="Skip whole-brain VAE training test")
     parser.add_argument("--skip-region-vae", action='store_true', help="Skip region-brain VAE training test")
+    parser.add_argument("--skip-wb-cl", action='store_true', help="Skip whole-brain contrastive model training test")
     args = parser.parse_args()
     
     logging.basicConfig(
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     # Prepare mock dataset
     # Original dataset
     logging.info("Preparing mock dataset...")
-    prepare_mock_dataset("data/mock_dataset/original", image_shape=image_shape)
+    prepare_mock_dataset("data/mock_dataset", image_shape=image_shape)
             
     # Test create_data_index script
     logging.info("Testing data index creation script...")
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     config = load_config_from_path(config_path)
     create_data_index(config)   
     
-    # Whole-brain
+    # >>> Whole-brain <<<
     logging.info("Whole-brain tests...")
 
     # Test whole-brain autoencoder training script
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     config["batch_size"] = 2  # Reduce batch size for testing
     config["max_batch_size"] = 1  # Adjust max batch size accordingly
     # Set dynamic paths
-    run_GUID = "whole_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_GUID = "vae_whole_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
     config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
     train_wb_autoencoder(config)
     
@@ -66,11 +67,45 @@ if __name__ == "__main__":
     from dev.scripts.whole_brain.run_vae_embedding import main as run_wb_vae_embedding
     config_path = "dev/configs/whole_brain/run_vae_embedding.py"
     config = load_config_from_path(config_path)
-    config["ckpt_path"] = "data/mock_dataset/logs/whole_brain/checkpoint-epoch-0.pth"
+    config["ckpt_path"] = "data/mock_dataset/logs/vae_whole_brain/checkpoint-epoch-0.pth"
     config["device"] = "cpu"  # Use CPU for testing
     run_wb_vae_embedding(config)
     
-
+    # Test create_data_index script
+    logging.info("Testing data index creation script whole-brain CL embeddings...")
+    from dev.utils import load_config_from_path
+    config = {
+        "datasets": {
+            "OASIS": "data/mock_dataset/whole_brain/batched_OASIS3",
+            "ADNI": "data/mock_dataset/whole_brain/batched_adni",
+        },
+        "output_csv": "data/mock_dataset/whole_brain/dataset_index.csv",
+        "id_key": "GUID"
+    }
+    create_data_index(config) 
+    
+    # Test train_contrastive_model script
+    logging.info("Testing whole-brain contrastive model training script...")
+    from dev.utils import load_config_from_path
+    from dev.scripts.whole_brain.train_contrastive_model import main as train_wb_contrastive_model
+    config_path = "dev/configs/whole_brain/train_contrastive_model.py"
+    config = load_config_from_path(config_path)
+    config["n_batches_per_file"] = 1  # Reduce batches per file for testing
+    config["batch_size"] = 16  # Reduce batch size for testing
+    if args.skip_wb_cl:
+        logging.info("Skipping whole-brain CL training test as per argument.")
+        config["num_epochs"] = 0  # Reduce epochs for testing
+    else:
+        logging.info("Testing whole-brain CL training script...")
+        config["num_epochs"] = 2  # Reduce epochs for testing
+        # Set dynamic paths
+    run_GUID = "cl_whole_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
+    config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
+    config["device"] = "cpu"  # Use CPU for testing
+    train_wb_contrastive_model(config)
+    
+    
+    
     
     
     # >>> Region-brain <<<
@@ -121,7 +156,7 @@ if __name__ == "__main__":
     config["batch_size"] = 2  # Reduce batch size for testing
     config["max_batch_size"] = 1  # Adjust max batch size accordingly
     # Set dynamic paths
-    run_GUID = "region_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_GUID = "vae_region_brain" # datetime.now().strftime("%Y%m%d_%H%M%S")
     config["logging_path"] = os.path.join(config["base_logging_path"], run_GUID)
     train_region_autoencoder(config)
     
@@ -131,7 +166,7 @@ if __name__ == "__main__":
     from dev.scripts.region_brain.run_vae_embedding import main as run_region_vae_embedding
     config_path = "dev/configs/region_brain/run_vae_embedding.py"
     config = load_config_from_path(config_path)
-    config["ckpt_path"] = "data/mock_dataset/logs/region_brain/checkpoint-epoch-0.pth"
+    config["ckpt_path"] = "data/mock_dataset/logs/vae_region_brain/checkpoint-epoch-0.pth"
     config["device"] = "cpu"  # Use
     config["batch_size"] = 16  # Reduce batch size for testing
     run_region_vae_embedding(config)

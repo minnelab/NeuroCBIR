@@ -4,7 +4,7 @@ config = {
     "random_state": 1234,
     "device": "cpu",  # "cuda" or "cpu"
     "data_path": "data/mock_dataset/original/",
-    "metadata_file": "data/mock_dataset/original/metadata.csv",
+    "metadata_file": "data/mock_dataset/metadata.csv",
     "base_logging_path": "data/mock_dataset/logs/",
     "resume_path": "", # e.g., "data/mock_dataset/logs/autoencoder/checkpoint_final.pth"
     "num_epochs": 500,

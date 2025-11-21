@@ -17,22 +17,24 @@ def prepare_mock_dataset(output_root="data/mock_dataset", image_shape=(1, 64, 64
     # -----------------------------
     # Settings
     # -----------------------------
-    output_root = Path(output_root)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root = Path(output_root) 
+    output_data_path = output_root / "original"
+    output_data_path.mkdir(parents=True, exist_ok=True)
 
     batch_specs = {
         "batched_adni": 2,   # 2 batches
         "batched_OASIS3": 1, # 1 batch
     }
 
-    samples_per_batch = 5
+    subjects_per_batch = 5
+    n_samples_per_subject = 5
     metadata_rows = []
 
     # -----------------------------
     # Generate batches
     # -----------------------------
     for folder, num_batches in batch_specs.items():
-        batch_dir = output_root / folder
+        batch_dir = output_data_path / folder
         batch_dir.mkdir(parents=True, exist_ok=True)
 
         for b in range(num_batches):
@@ -40,46 +42,48 @@ def prepare_mock_dataset(output_root="data/mock_dataset", image_shape=(1, 64, 64
             segs = []
             guids = []
 
-            for i in range(samples_per_batch):
+            for s in range(subjects_per_batch):
+                
+                for n in range(n_samples_per_subject):
 
-                guid = f"mock_{folder}_{b+1:04d}_{i+1:04d}"
-                guids.append(guid)
+                    guid = f"mock_{folder}_{b+1:04d}_{s+1:04d}_{n+1:04d}"
+                    guids.append(guid)
 
-                # Random MRI volume
-                img = np.random.rand(*image_shape).astype(np.float32)
+                    # Random MRI volume
+                    img = np.random.rand(*image_shape).astype(np.float32)
 
-                # Random segmentation mask
-                seg = np.random.randint(0, 2, size=image_shape).astype(np.uint8)
+                    # Random segmentation mask
+                    seg = np.random.randint(0, 2, size=image_shape).astype(np.uint8)
 
-                imgs.append(img)
-                segs.append(seg)
+                    imgs.append(img)
+                    segs.append(seg)
 
-                # Metadata row
-                metadata_rows.append({
-                    "GUID": guid,
-                    "project": guid.split("_")[0],
-                    "subject": guid.split("_")[1],
-                    "timepoint": guid.split("_")[2],
-                    "scan_type": "T1",
-                    "field_strength": 3,
-                    "manufacturer": "SIEMENS",
-                    "model_name": "MockModel",
-                    "disease": random.choice(["CN", "MCI", "AD"]),
-                    "age": random.randint(20, 90),
-                    "partition": random.choice(["train", "val", "test"]),
-                    "brain_qc": round(random.random(), 2),
-                })
+                    # Metadata row
+                    metadata_rows.append({
+                        "GUID": guid,
+                        "project": guid.split("_")[0],
+                        "subject": f"{s+1:04d}",
+                        "timepoint": f"{n+1:04d}",
+                        "scan_type": "T1",
+                        "field_strength": 3,
+                        "manufacturer": "SIEMENS",
+                        "model_name": "MockModel",
+                        "disease": random.choice(["CN", "MCI", "AD"]),
+                        "age": random.randint(20, 90),
+                        "partition": random.choice(["train", "val", "test"]),
+                        "brain_qc": round(random.random(), 2),
+                    })
 
-            # Save NPZ batch
-            save_path = batch_dir / f"batch_{b+1:04d}.npz"
-            np.savez_compressed(
-                save_path,
-                images=np.stack(imgs),
-                segmentations=np.stack(segs),
-                GUID=np.array(guids, dtype=object)
-            )
+                # Save NPZ batch
+                save_path = batch_dir / f"batch_{b+1:04d}.npz"
+                np.savez_compressed(
+                    save_path,
+                    images=np.stack(imgs),
+                    segmentations=np.stack(segs),
+                    GUID=np.array(guids, dtype=object)
+                )
 
-            print(f"Created: {save_path}")
+                print(f"Created: {save_path}")
 
     # -----------------------------
     # Write metadata.csv
