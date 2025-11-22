@@ -1,8 +1,5 @@
 from typing import Union
-
-import torch
 from torch.utils.tensorboard.writer import SummaryWriter
-
 
 class AverageLoss:
     """
