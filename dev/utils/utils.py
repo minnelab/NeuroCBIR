@@ -1,6 +1,4 @@
 import importlib.util
-import os
-import sys
 
 def load_config_from_path(path):
     spec = importlib.util.spec_from_file_location("config_module", path)
