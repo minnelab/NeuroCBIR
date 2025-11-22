@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import numpy as np
 from dev.preprocessing.load_dataset import list_files_with_extension
-from dev.preprocessing.segmentation import get_common_bounding_box, extract_bounding_box
+from dev.preprocessing.bounding_box_utils import get_common_bounding_box, extract_bounding_box
 from dev.utils import load_config_from_path
 import argparse
 

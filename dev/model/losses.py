@@ -47,7 +47,7 @@ class MultiPosConLoss(nn.Module):
         label_mask = labels.view(-1, 1) == labels.view(1, -1)  # [B, B]
 
         pos_mask = label_mask.float()
-        neg_mask = (~label_mask).float()
+        # neg_mask = (~label_mask).float()
 
         # Count positives per sample
         pos_counts = pos_mask.sum(dim=1, keepdim=True)  # [B, 1]
