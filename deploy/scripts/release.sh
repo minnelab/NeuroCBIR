@@ -23,6 +23,9 @@ fi
 PACKAGE_DIR="deploy/neurocbir"
 DIST_DIR="$PACKAGE_DIR/dist"
 DOCKER_DIR="deploy/docker"
+ROOT_DATA_DIR="data_private"             # top-level folder
+
+
 
 # Docker Hub (change to your username)
 # DOCKER_REPO="your_dockerhub_username/neurocbir"
@@ -78,15 +81,42 @@ rm -rf dist
 python3 -m build
 cd -
 
+# ============================================
+# STEP 3 - ZIP data_private
+# ============================================
+SRC_DATA_DIR="$ROOT_DATA_DIR/data_private"   # actual data to compress
+DATA_RELEASE_DIR="$ROOT_DATA_DIR/releases"
+
+if [ ! -d "$SRC_DATA_DIR" ]; then
+    echo "❌ ERROR: Expected directory '$SRC_DATA_DIR' does not exist."
+    exit 1
+fi
+
+mkdir -p "$DATA_RELEASE_DIR"
+
+ARCHIVE_NAME="data_private_v${PACKAGE_VERSION}.zip"
+ARCHIVE_PATH="${DATA_RELEASE_DIR}/${ARCHIVE_NAME}"
+
+echo "📦 Creating archive: $ARCHIVE_PATH"
+
+cd "$SRC_DATA_DIR"
+# zip everything inside the inner data_private/
+zip -r "../../$ARCHIVE_PATH" . >/dev/null
+cd - >/dev/null
+
+echo "📦 Data archive created at: $ARCHIVE_PATH"
+
+
 # ============================
-# STEP 3: Create GitHub release
+# STEP 4: Create GitHub release
 # ============================
 # Requires GitHub CLI installed and authenticated (gh auth login)
 gh release create "v$PACKAGE_VERSION" \
     "$DIST_DIR/neurocbir-$PACKAGE_VERSION.tar.gz" \
     "$DIST_DIR/neurocbir-$PACKAGE_VERSION-py3-none-any.whl" \
+    "$ARCHIVE_PATH" \
     --title "NeuroCBIR v$PACKAGE_VERSION" \
-    --notes "First full release of NeuroCBIR. Includes Python package and optional heavy dependencies."
+    --notes "Automated release for version $PACKAGE_VERSION"
 
 # ============================
 # STEP 4: Build Docker image
