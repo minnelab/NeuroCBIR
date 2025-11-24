@@ -28,7 +28,7 @@ It can be used in multiple ways:
 
 ## Required Data
 
-This project requires pre-trained model weights and embedding datasets, which must be downloaded manually. After cloning the repository, you must place these files into the `deploy/data/data_private/` directory.
+NeuroCBIR relies on pre-trained model weights and embedding datasets. These files must be downloaded manually and placed in the `deploy/data/data_private/` directory after cloning the repository. You can obtain the required files from the [releases](https://github.com/minnelab/NeuroCBIR/releases) page.
 
 The expected directory structure is:
 
