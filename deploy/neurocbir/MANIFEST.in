@@ -1,0 +1,6 @@
+include README.md
+include version.py
+recursive-include models *.py
+recursive-include runners *.py
+recursive-include utils *.py
+recursive-include configs *.yaml

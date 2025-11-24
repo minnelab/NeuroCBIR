@@ -1,5 +1,17 @@
 from setuptools import setup, find_packages
-from version import __version__
+import os
+
+
+# Determine path relative to this setup.py
+HERE = os.path.abspath(os.path.dirname(__file__))
+version_file = os.path.join(HERE, "neurocbir", "version.py")
+
+# Version
+version_file = os.path.join(HERE, "version.py")
+version_ns = {}
+with open(version_file, "r") as f:
+    exec(f.read(), {}, version_ns)
+package_version = version_ns["__version__"]
 
 # Read the long description from README.md
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -30,7 +42,7 @@ extras_require = {
 
 setup(
     name="neurocbir",
-    version=__version__,
+    version=package_version,
     author='Félix Nieto-del-Amor',
     author_email='fenda@kth.se',
     description="NeuroCBIR: A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI",

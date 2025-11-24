@@ -1,13 +1,3 @@
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
-[project]
-name = "neurocbir"
-version = "1.0.0"
-authors = [
-  { name="Félix Nieto-del-Amor", email="fenda@kth.se" },
-]
-description = "A Public Image Retrieval System for Whole-Brain and Region-Specific MRI"
-readme = "README.md"
-requires-python = ">=3.10"
