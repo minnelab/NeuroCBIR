@@ -130,10 +130,12 @@ This repository provides precomputed features for each MRI image in the OASIS3, 
 
 ## Contact
 
-Félix Nieto-del-Amor¹, Jingru Fu¹, J.-Sebastian Muehlboeck², Eric Westman²,  Daniel Ferreira², Rodrigo Moreno¹
+Félix Nieto-del-Amor¹, Jingru Fu²¹, J.-Sebastian Muehlboeck², Eric Westman²,  Daniel Ferreira²⁴, Rodrigo Moreno¹³
 
 ¹ Division of Biomedical Imaging, KTH Royal Institute of Technology
-² Division of Clinical Geriatrics, Karolinska Institute
+² Athinoula A. Martinos Center for Biomedical Imaging, Massachusetts General Hospital and Harvard Medical School, MA, USA.
+³ Division of Clinical Geriatrics, Karolinska Institute
+⁴ Facultad de Ciencias de la Salud, Universidad Fernando Pessoa Canarias, Santa María de Guía, Las Palmas, Spain.
 
 For questions or support, contact **Félix Nieto-del-Amor** at: fenda@kth.se
 
