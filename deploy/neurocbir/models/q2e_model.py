@@ -3,6 +3,7 @@ import torch.nn as nn
 from monai.networks.nets.autoencoderkl import AutoencoderKL, Encoder
 from typing import Sequence
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,18 @@ class Q2EModel(nn.Module):
         return out.view(out.size(0), -1)  # Flatten except batch dimension
 
 def load_vae_encoder(vae_params: dict, vae_ckpt_path: str, device: str):
+    """
+    Load a VAE encoder. Raises a clear error if the checkpoint is missing.
+    """
+
+    # Check if model exists
+    if not os.path.isfile(vae_ckpt_path):
+        raise FileNotFoundError(
+            f"VAE checkpoint not found at: {vae_ckpt_path}\n\n"
+            f"Please download the required model files following the instructions "
+            f"in the repository's README.md file."
+        )
+        
     # Set up VAE
     autoencoder = AutoencoderKL(**vae_params).to(device)
 
@@ -83,6 +96,18 @@ def load_vae_encoder(vae_params: dict, vae_ckpt_path: str, device: str):
     return autoencoder.encode
 
 def load_cl_projector(cl_params: dict, cl_ckpt_path: str, device: str):
+    """
+    Load the contrastive model projector. Raises a clear error if the checkpoint is missing.
+    """
+
+    # Check if model exists
+    if not os.path.isfile(cl_ckpt_path):
+        raise FileNotFoundError(
+            f"Contrastive Learning model checkpoint not found at: {cl_ckpt_path}\n\n"
+            f"Please download the required model files following the instructions "
+            f"in the repository's README.md file."
+        )
+    
     def create_encoder(params: dict, device: str):
         encoder_params = params["encoder_params"]
         return Encoder(**encoder_params).to(device)
