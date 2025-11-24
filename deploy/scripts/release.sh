@@ -33,12 +33,36 @@ DOCKER_DIR="deploy/docker"
 # ============================
 # STEP 0: Read version
 # ============================
-PACKAGE_VERSION=$(python3 -c "from $PACKAGE_DIR.version import __version__; print(__version__)")
+echo "Reading version from deploy/neurocbir/version.py..."
+
+PACKAGE_VERSION=$(python3 - <<EOF
+import os
+
+version_file = "deploy/neurocbir/version.py"
+ns = {}
+with open(version_file, "r") as f:
+    exec(f.read(), ns)
+
+print(ns["__version__"])
+EOF
+)
+
 if [ -z "$PACKAGE_VERSION" ]; then
-    echo "Error: Could not read NeuroCBIR version."
+    echo "❌ Error: Could not read NeuroCBIR version."
     exit 1
 fi
-echo "Releasing NeuroCBIR version $PACKAGE_VERSION"
+
+echo "📦 Releasing NeuroCBIR version $PACKAGE_VERSION"
+
+
+# ============================
+# WARNING / CONFIRMATION
+# ============================
+read -p "Is the version $PACKAGE_VERSION correct? (yes/no) " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+    echo "Aborting release."
+    exit 1
+fi
 
 # ============================
 # STEP 1: Create Git tag
