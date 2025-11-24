@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from version import __version__
 
 # Read the long description from README.md
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -25,9 +26,11 @@ extras_require = {
     ]
 }
 
+
+
 setup(
     name="neurocbir",
-    version="1.0.0",
+    version=__version__,
     author='Félix Nieto-del-Amor',
     author_email='fenda@kth.se',
     description="NeuroCBIR: A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI",

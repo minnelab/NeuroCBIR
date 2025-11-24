@@ -3,8 +3,24 @@ set -e
 
 # === CONFIGURATION ===
 DOCKER_IMAGE_NAME="neurocbir"
-DOCKER_IMAGE_TAG="latest"
+# DOCKER_IMAGE_TAG="latest"
 DOCKERFILE_PATH="deploy/docker/Dockerfile"
+VERSION_FILE="deploy/neurocbir/version.py"
+
+# === READ VERSION ===
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "Error: version.py not found at $VERSION_FILE"
+    exit 1
+fi
+# Extract version string from __version__ line
+PACKAGE_VERSION=$(grep -E "^__version__" "$VERSION_FILE" | sed -E "s/__version__ *= *['\"]([^'\"]+)['\"]/\1/")
+
+if [ -z "$PACKAGE_VERSION" ]; then
+    echo "Error: Could not parse version from $VERSION_FILE"
+    exit 1
+fi
+
+DOCKER_IMAGE_TAG="$PACKAGE_VERSION"
 
 # Define required files and directories that the user must download manually.
 REQUIRED_PATHS=(
