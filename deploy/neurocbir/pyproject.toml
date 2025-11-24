@@ -8,6 +8,6 @@ version = "0.1.0"
 authors = [
   { name="Félix Nieto-del-Amor", email="fenda@kth.se" },
 ]
-description = "A Public Content-Based Image Retrieval System for Whole-Brain and Region-Specific MRI Across Multiple Clinical Cohorts"
+description = "A Public Image Retrieval System for Whole-Brain and Region-Specific MRI"
 readme = "README.md"
 requires-python = ">=3.10"

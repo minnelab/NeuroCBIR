@@ -115,6 +115,19 @@ The figure above illustrates the Snakemake workflow for the NeuroCBIR pipeline, 
 
 To fully reproduce the NeuroCBIR pipeline, including training, evaluation, and experiments, see `dev/README.md`.
 
+---
+
+### Shared Derived Features
+
+This repository provides precomputed features for each MRI image in the OASIS3, AIBL, MIRIAD and SLIM datasets. For each image, the following are included:
+
+- `image_id`: The OASIS3, AIBL, MIRIAD and SLIM image-level identifier (e.g., OAS30001_MR_d0123)
+- Derived features: numeric representations extracted from the MRI
+
+**Important:** These features alone cannot be used to identify any subject. Linking these features to clinical or imaging data requires **authorized access to the original dataset**. This sharing is intended to allow reproducibility of our analysis and pipeline.
+
+---
+
 ## Contact
 
 Félix Nieto-del-Amor¹, Jingru Fu¹, J.-Sebastian Muehlboeck², Eric Westman²,  Daniel Ferreira², Rodrigo Moreno¹
