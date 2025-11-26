@@ -44,3 +44,34 @@ def get_common_bounding_box(initial_bbox, common_shape):
     max_coords_common = (np.array(min_coords_common) + np.array(common_shape)).astype(int).tolist()
 
     return tuple(min_coords_common), tuple(max_coords_common)
+
+def extract_region_features(segmentation_mask, brain_vol):
+    coords = np.argwhere(segmentation_mask)
+    if coords.size == 0:
+        return {'volume':0,'surface_area':0,'compactness':0,'elongation':0,'flatness':0}
+    
+    # Volume (normalized)
+    vol = segmentation_mask.sum() / brain_vol
+    
+    # Surface area approximation
+    from scipy.ndimage import binary_erosion
+    eroded = binary_erosion(segmentation_mask)
+    surface_area = segmentation_mask.sum() - eroded.sum()
+    
+    # Compactness
+    compactness = vol**2 / (surface_area**3 + 1e-6)
+    
+    # PCA for shape
+    cov = np.cov(coords, rowvar=False)
+    eigvals = np.linalg.eigvalsh(cov)
+    eigvals = np.sort(eigvals)[::-1]
+    elongation = eigvals[0] / (eigvals[2] + 1e-6)
+    flatness = eigvals[1] / (eigvals[2] + 1e-6)
+    
+    return {
+        'volume': vol,
+        'surface_area': surface_area,
+        'compactness': compactness,
+        'elongation': elongation,
+        'flatness': flatness
+    }
