@@ -57,6 +57,7 @@ def extract_region_features(segmentation_mask, brain_vol):
     from scipy.ndimage import binary_erosion
     eroded = binary_erosion(segmentation_mask)
     surface_area = segmentation_mask.sum() - eroded.sum()
+    surface_area = surface_area / brain_vol  # normalize
     
     # Compactness
     compactness = vol**2 / (surface_area**3 + 1e-6)
