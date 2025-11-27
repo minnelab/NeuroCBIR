@@ -78,6 +78,9 @@ def main(config):
     # Load metadata
     index_ds = pd.read_csv(os.path.join(data_path,"dataset_index.csv"))
     clinical_ds = pd.read_csv(config["metadata_file"])
+    # Filter out rows repeated 
+    clinical_ds = clinical_ds.query("repet == 1").reset_index(drop=True)
+    
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner") # Merge on the 'GUID' column
     logging.info(f"METADATA: Original rows: {len(metadata)}")
     metadata['subject'].replace('', pd.NA, inplace=True) # First, ensure empty strings are treated as NaN
