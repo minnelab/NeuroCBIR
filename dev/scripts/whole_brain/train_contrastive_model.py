@@ -143,6 +143,7 @@ def main(config):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, required=True, help='Path to the JSON configuration file')
     args = parser.parse_args()
