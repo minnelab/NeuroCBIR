@@ -1,17 +1,9 @@
 config = {
-    "logging_level": "INFO", # Options: DEBUG, INFO, WARNING, ERROR
-    "parallel_by": "subject",  # Options: "roi" or "subject"
-    "data_path": "/mnt/kth_cbh/fenda/Datasets/",
-    "metadata_file_name": "/mnt/kth_cbh/fenda/Datasets/ADNI/metadata.csv",   # contains columns: GUID, segmentation_file
-    "output_dir": "/mnt/kth_cbh/fenda/Datasets/ADNI",
-    # "metadata_file_name": "/mnt/kth_cbh/fenda/Datasets/OASIS3/metadata.csv",   # contains columns: GUID, segmentation_file
-    # "output_dir": "/mnt/kth_cbh/fenda/Datasets/OASIS3",
-    "n_jobs": 10,
-    "checkpoint_every": 20,
-    "voxel_volume_mm3": 1,
-    "labels_path": "deploy/data/labels.csv",
-    "bb_path": "deploy/data/bounding_boxes.csv",
-    
+    "data_path": "/home/maia-user/cifs/Datasets/",
+    "metadata_file_name": "/home/maia-user/cifs/Datasets/OASIS3/metadata.csv",   # contains columns: GUID, segmentation_file
+    "output_dir": "/home/maia-user/cifs/Datasets/OASIS3",
+    "n_jobs_roi": 6,
+    "labels_path": "data/labels.csv",
 #     "roi_labels": 
 #         # None,  # If None, will be loaded from labels_path        
 #         {
