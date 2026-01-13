@@ -1,0 +1,252 @@
+import os
+from tqdm import main, tqdm
+import pandas as pd
+import numpy as np
+import logging
+
+from dev.preprocessing import SubCorBatDataset
+
+from skimage.metrics import structural_similarity as ssim
+from scipy.ndimage import gaussian_filter, zoom
+from itertools import product
+
+from joblib import Parallel, delayed
+
+def compute_for_query(query, r_guid, r_pyramid):
+    val = np.mean([
+        ssim(a, b, data_range=1.0)
+        for a, b in zip(query["pyramid"], r_pyramid)
+    ])
+    return query["GUID"], r_guid, val
+
+
+def build_pyramid(img, levels=3):
+    pyr = [img]
+    for _ in range(1, levels):
+        img = gaussian_filter(img, sigma=1)
+        img = zoom(img, 0.5, order=1)
+        if min(img.shape) < 16:
+            break
+        pyr.append(img)
+    return pyr
+
+def ms_ssim_from_pyramids(pyr1, pyr2):
+    return np.mean([
+        ssim(a, b, data_range=1.0)
+        for a, b in zip(pyr1, pyr2)
+    ])
+
+
+def ms_ssim(img1, img2, levels=2):
+    scores = []
+
+    for _ in range(levels):
+        scores.append(
+            ssim(img1, img2, data_range=1.0)
+        )
+
+        # Gaussian blur BEFORE downsampling
+        img1 = gaussian_filter(img1, sigma=1)
+        img2 = gaussian_filter(img2, sigma=1)
+
+        # Proper downsampling
+        img1 = zoom(img1, 0.5, order=1)
+        img2 = zoom(img2, 0.5, order=1)
+
+        if min(img1.shape) < 16:
+            break
+
+    return float(np.mean(scores))
+
+def preprocess(img):
+    return zoom(img, 0.5, order=1)
+
+def main(config):
+    
+    # Startup config
+    np.random.seed(seed=config["random_state"])
+    logging.info("Starting training with config: %s", config)
+    seed = config["random_state"]
+    data_path = config["data_path"]
+
+    # Load metadata
+    index_ds = pd.read_csv(os.path.join(config["data_path"], config["dataset_index_file_name"]))
+    clinical_ds = pd.read_csv(os.path.join(config["data_path"], config["metadata_file_name"]))
+    metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner")
+    logging.info(f"METADATA: Original rows: {len(metadata)}")
+
+    # Filter out rows
+    metadata = metadata.query("repet == 1").reset_index(drop=True)
+    metadata = metadata.query("useable == 1").reset_index(drop=True)
+    metadata = metadata.query("mislabel == 0").reset_index(drop=True)
+    metadata['subject'].replace('', pd.NA, inplace=True)
+    metadata = metadata.dropna(subset=['subject']).reset_index(drop=True)
+    metadata = metadata.dropna(subset=['partition']).reset_index(drop=True)
+    logging.info(f"METADATA: Remaining rows: {len(metadata)}") # Check result
+    logging.debug(f"METADATA columns: {metadata.columns}") 
+    logging.debug(f"METADATA head: {metadata.head()}") 
+    
+    # Load labels and bounding boxes for cortical/subcortical structures
+    labels_df = pd.read_csv(config["labels_path"])
+    bb_df = pd.read_csv(config["bb_path"])
+    labels_bb_df = pd.merge(labels_df, bb_df, on="LabelName", how="inner") # Merge on the 'GUID' column
+    # Filter column LabelName to only keep those in struct_names if specified
+    if config.get("struct_names") is not None:
+        labels_bb_df = labels_bb_df[labels_bb_df["LabelName"].isin(config["struct_names"])].reset_index(drop=True)
+        logging.info(f"Filtered labels to {len(labels_bb_df)} structures based on struct_names.")
+
+    # Training configuration
+    batch_files = sorted(metadata["batch_file"].unique())
+    
+    # Select batch_files to ensure n_queries per project and partition (minimize the number of batch files loaded).
+    bias_columns = config.get("bias_columns", [])
+    bias_combinations = metadata[bias_columns].drop_duplicates().values.tolist()
+    
+    q_batch_files = []
+    for combs in bias_combinations:
+        logging.debug(f"Combination: {combs}")
+        # Example of groupby: ["ADNI", ]
+        metadata_subset = metadata.copy()
+        for col, comb in zip(bias_columns, combs):
+            metadata_subset = metadata_subset.query(f"{col} == @comb").reset_index(drop=True)
+        batch_files_subset = sorted(metadata_subset["batch_file"].unique())
+        logging.debug(f"  → Found {len(metadata_subset)} samples in {len(batch_files_subset)} batch files.")
+        # Check if in a batch, there are enough samples to extract n_queries per combination
+        for batch_file in batch_files_subset:
+            if len(metadata_subset.query("batch_file == @batch_file")) >= config["n_queries"]:
+                q_batch_files.append([combs, batch_file])
+                logging.debug(f"    ✓ Sufficient samples in batch_file: {batch_file}")
+                break
+            else:
+                logging.debug(f"    ✗ Insufficient samples for combination: {combs} in batch_file: {batch_file}")
+
+    # Sanity check to ensure there are enough batch files
+    logging.info(f"Batch files for queries: {q_batch_files}")
+    
+    q_batch_files = q_batch_files
+
+    logging.info(f"Selected {len(q_batch_files)} batch files for queries.")
+    # Get queries
+    queries = []
+    for combs, q_batch_file in q_batch_files:
+        logging.debug(f"Selecting queries for combination: {combs} from batch_file: {q_batch_file}")
+        # dataset = LookupNPZDataset(metadata, batch_file=q_batch_file, use_segmentation=True)
+        dataset = SubCorBatDataset(metadata, batch_file=q_batch_file, labels_bb_df=labels_bb_df, n_structs=-1)
+        metadata_subset = dataset.metadata.copy()
+        for col, comb in zip(bias_columns, combs):
+            metadata_subset = metadata_subset.query(f"{col} == @comb")
+        # get possible query indices
+        possible_indices = metadata_subset.index.tolist()
+        i_qs = np.random.choice(possible_indices, size=config["n_queries"], replace=False)
+        for i_q in i_qs:
+            sample = dataset[i_q].copy()
+            q = {}
+            for i, struct_name in enumerate(sample["struct_name"]):
+                if struct_name not in config["struct_names"]:
+                    continue
+                q["GUID"] = sample["GUID"][i]
+                q["struct_name"] = struct_name
+                q["struct_map_id"] = sample["struct_map_id"][i]
+                q["image"] = sample["image"][i].detach().cpu().numpy().astype(np.float32)[0]
+                q["pyramid"] = build_pyramid(q["image"])
+                queries.append(q.copy())
+    logging.info(f"Selected total {len(queries)} queries for MS-SSIM computation.")
+            
+    # Compute MS-SSIM: pairwise comparison between each query and the rest of the dataset
+    res_mssim = {}
+    for query in queries:
+        q_guid = query["GUID"]
+        res_mssim[q_guid] = {"struct_name": query["struct_name"], "r_guid": [], "ms_ssim": []}
+    
+    for i, batch_file in enumerate(batch_files):
+        # dataset = LookupNPZDataset(metadata, batch_file=batch_file, use_segmentation=False)
+        dataset = SubCorBatDataset(metadata, batch_file=q_batch_file, labels_bb_df=labels_bb_df, n_structs=-1)
+        logging.info(f"Created dataset for batch_file: {batch_file} with {len(dataset)} samples")
+        
+        for struct_name in config["struct_names"]:
+            logging.info(f"Processing structure: {struct_name} in batch_file: {batch_file} ({i+1}/{len(batch_files)})")
+                # if struct_name not in config["struct_names"]:
+                #     continue
+                
+            r_data = []
+            for data in tqdm(dataset, total=len(dataset), ncols=100):  # loop over several batches per file
+                r_sample = data
+                
+                for j in range(len(r_sample["struct_name"])):
+                # for j, struct_name in enumerate(r_sample["struct_name"]):
+                    r_struct_name = r_sample["struct_name"][j]
+                    if r_struct_name != struct_name:
+                        continue
+                    r_guid = r_sample["GUID"][j]
+                    r_struct_name = r_sample["struct_name"][j]
+                    r_image = r_sample["image"][j].detach().cpu().numpy().astype(np.float32)[0]
+                    r_pyramid = build_pyramid(r_image)
+                    
+                    r_data.append((r_guid, r_pyramid))
+                    
+            queries_filtered = [q for q in queries if q["struct_name"] == struct_name]
+                
+            tasks = list(product(queries_filtered, r_data))
+            results = Parallel(n_jobs=config["n_jobs"])(
+                delayed(compute_for_query)(q, r_guid, r_pyramid)
+                for q, (r_guid, r_pyramid) in tqdm(tasks, desc="Processing")
+            )
+            
+            for q_guid, r_guid, val in results:
+                res_mssim[q_guid]["r_guid"].append(r_guid)
+                res_mssim[q_guid]["ms_ssim"].append(val)
+
+    logging.info(f"Computation completed!")
+    
+    # Convert results to a flat table
+    rows = []
+    for q_guid, values in res_mssim.items():
+        r_guids = values["r_guid"]
+        ms_ssims = values["ms_ssim"]
+        struct_names = values["struct_name"]
+
+        for r_guid, score, struct_name in zip(r_guids, ms_ssims, struct_names):
+            rows.append({
+                "query_guid": q_guid,
+                "struct_name": struct_name,
+                "reference_guid": r_guid,
+                "ms_ssim": score
+            })
+    df = pd.DataFrame(rows)
+
+    # Save res_mssim to csv
+    output_file = os.path.join(config["output_dir"], config["output_file_name"])
+    df.to_csv(output_file, index=False)
+    logging.info(f"Saved to csv!: {output_file}")
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    
+    config = {
+        "random_state": 1234,
+        "data_path": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/",
+        "output_dir": "/mimer/NOBACKUP/groups/naiss2025-23-412/felixnie/batched_datasets/region_brain/",
+        "labels_path": "data/labels.csv",
+        "bb_path": "data/bounding_boxes.csv",
+        "dataset_index_file_name": "original/dataset_index.csv",
+        "metadata_file_name": "combined_metadata.csv",
+        "n_queries": 30,
+        "n_jobs": -1,
+        "output_file_name": "ms_ssim_sample.csv",
+        "bias_columns": [
+            "partition",
+            "project",
+            ],
+        # "struct_names": None, # <-- Set to None to compute all struct names
+        "struct_names": [ # <-- Set to None to compute all struct names
+            "Left-Hippocampus",
+            "Left-Thalamus",
+            "Left-Amygdala",
+            "Left-Lateral-Ventricle",
+
+        ]
+    }
+
+    main(config)
+
+    

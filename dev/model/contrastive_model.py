@@ -50,8 +50,8 @@ class ContrastiveModel(nn.Module):
 
         self.projector = nn.Sequential(*layers)
 
-    def forward(self, x, return_encoder_output=False):
-        x = self.encoder(x)
+    def forward(self, x1, return_encoder_output=False):
+        x = self.encoder(x1)
         x_flat = torch.flatten(self.pool(x), start_dim=1)
         z = self.projector(x_flat)
-        return (x, z) if return_encoder_output else z
+        return (torch.flatten(x1, start_dim=1), z) if return_encoder_output else z

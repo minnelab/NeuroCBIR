@@ -131,6 +131,16 @@ class EmbBatchedDataset(Dataset):
 
             # Rebuild the guid_to_metadata lookup for consistency
             self.guid_to_metadata = self.metadata.set_index("GUID").to_dict(orient="index")
+            
+        # Final metadata
+        add_to_metadata_list = []
+        for idx in range(self.__len__()):
+                sample = self.__getitem__(idx)
+                guid = sample["guid"]
+                add_to_metadata_list.append({"GUID": guid, "idx": idx})
+        add_to_metadata_df = pd.DataFrame(add_to_metadata_list)
+        self.metadata = pd.merge(self.metadata, add_to_metadata_df, on="GUID", how="inner")
+        self.metadata.set_index("idx", inplace=True)
 
     def __len__(self):
         return len(self.embs)

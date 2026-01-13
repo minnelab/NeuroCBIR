@@ -27,6 +27,12 @@ def main(config):
 
     # Merge on GUID
     dataset = pd.merge(clinical_ds, df_embs, on="GUID", how="inner")
+    
+    # Filter out rows    
+    dataset = dataset.query("useable == 1").reset_index(drop=True)
+    dataset = dataset.query("mislabel == 0").reset_index(drop=True)
+    dataset['subject'].replace('', pd.NA, inplace=True)
+    dataset = dataset.dropna(subset=['subject']).reset_index(drop=True)
 
     # Convert embedding columns into a single 'features' column of vectors
     embedding_cols = [col for col in df_embs.columns if col != "GUID"]

@@ -42,6 +42,10 @@ def main(config):
     index_ds = pd.read_csv(os.path.join(config["data_path"], config["dataset_index_file_name"]))
     clinical_ds = pd.read_csv(os.path.join(config["data_path"], config["metadata_file_name"]))
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner")
+    # Filter out rows
+    metadata = metadata.query("repet == 1").reset_index(drop=True)
+    metadata = metadata.query("useable == 1").reset_index(drop=True)
+    metadata = metadata.query("mislabel == 0").reset_index(drop=True)
     metadata['subject'].replace('', pd.NA, inplace=True)
     metadata = metadata.dropna(subset=['subject']).reset_index(drop=True)
 
@@ -69,7 +73,7 @@ def main(config):
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
     grad_scaler = GradScaler()
     avgloss = AverageLoss()
-    cont_loss_fn = MultiPosConLoss()
+    cont_loss_fn = MultiPosConLoss(**config["loss_params"])
 
     # Resume trainig
     resume_path = config["resume_path"]
@@ -111,8 +115,8 @@ def main(config):
                     device=device
                 )
                 embs, labels = batch["emb"], batch["label"]
-                proj_embs = model(embs)
-                cont_loss = cont_loss_fn(proj_embs, labels)
+                vae_feats, proj_embs = model(embs, return_encoder_output=True)
+                cont_loss = cont_loss_fn(proj_embs, vae_feats, labels)
 
             loss = cont_loss
             grad_scaler.scale(loss).backward()
