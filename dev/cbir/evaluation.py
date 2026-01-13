@@ -36,7 +36,9 @@ def retrieve_topk_for_queries(
     queries: pd.DataFrame,
     top_k: int = 3,
     feature_column: str = "features",
-    guid_column: str = "GUID"
+    guid_column: str = "GUID",
+    exclude_self: bool = True,
+    exclude_same_subject: bool = True,
 ) -> pd.DataFrame:
     """
     Retrieve the top-k most similar entries for a subset of queries, 
@@ -53,6 +55,9 @@ def retrieve_topk_for_queries(
         pd.DataFrame: Retrieval results. One row per query, first column is the query GUID,
                       followed by the GUIDs of the top-k retrieved entries.
     """
+    if top_k <= 0:
+        top_k = len(dataset)
+        
     # Retrieval pool
     features_matrix = np.stack(dataset[feature_column].values)
     guids = dataset[guid_column].values
@@ -62,21 +67,34 @@ def retrieve_topk_for_queries(
     query_guids = queries[guid_column].values
 
     retrievals = []
+    n_col_to_rm = 0
     for i in tqdm(range(len(queries)), desc="Retrieving"):
         similarities = cosine_similarity(query_features[i].reshape(1, -1), features_matrix)[0]
         
-        # Exclude self if query is in the dataset
-        if query_guids[i] in guids:
-            idx_self = np.where(guids == query_guids[i])[0]
-            similarities[idx_self] = -1
+        # Exclude self if query is in the dataset and same subject
+        if exclude_self:
+            self_mask = (dataset[guid_column] == query_guids[i]).values
+            similarities[self_mask] = -1  # Zero out self-similarity   
+            if np.sum(self_mask) > n_col_to_rm:
+                n_col_to_rm = np.sum(self_mask) 
+        if exclude_same_subject:
+            subject_mask = (dataset["subject"] == queries.iloc[i]["subject"]).values
+            similarities[subject_mask] = -1  # Zero out similarities for same subject
+            if np.sum(subject_mask) > n_col_to_rm:
+                n_col_to_rm = np.sum(subject_mask)
 
         # Get top-k
         top_k_indices = np.argsort(similarities)[::-1][:top_k]
         row = [query_guids[i]] + guids[top_k_indices].tolist()
         retrievals.append(row)
-
+        
     col_names = ["query"] + [f"top{i+1}" for i in range(top_k)]
-    return pd.DataFrame(retrievals, columns=col_names)
+    out = pd.DataFrame(retrievals, columns=col_names)
+    
+    # Remove last n_col_to_rm columns if they correspond to same-subject entries
+    if n_col_to_rm > 0:
+        out = out.iloc[:, :-n_col_to_rm]
+    return out
 
 def evaluate_guid_retrieval_map(retrieval_df: pd.DataFrame, metadata_df: pd.DataFrame, top_k: int = 3, class_column: str = 'class_label') -> dict:
     """
