@@ -47,9 +47,6 @@ def main(config):
     index_ds = pd.read_csv(os.path.join(config["data_path"], config["dataset_index_file_name"]))
     clinical_ds = pd.read_csv(os.path.join(config["data_path"], config["metadata_file_name"]))
     metadata = pd.merge(index_ds, clinical_ds, on="GUID", how="inner")
-    # Filter out rows
-    # metadata = metadata.query("repet == 1").reset_index(drop=True)
-    # metadata = metadata.query("useable == 1").reset_index(drop=True)
     metadata['subject'].replace('', pd.NA, inplace=True)
     metadata = metadata.dropna(subset=['subject']).reset_index(drop=True)
 
@@ -143,7 +140,6 @@ def main(config):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, required=True, help='Path to the JSON configuration file')
     args = parser.parse_args()

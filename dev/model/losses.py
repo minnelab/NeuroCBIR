@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
-import logging
 
 class KLDivergenceLoss:
     """
@@ -40,71 +39,70 @@ class MultiPosConLoss(nn.Module):
         Returns:
             Scalar loss
         """
-        # device = feats.device
-        # feats = F.normalize(feats, dim=-1)
-        # logits = torch.matmul(feats, feats.T) / self.temperature  # [B, B]
-
-        # # Build positive mask (1 if same label, 0 otherwise)
-        # label_mask = labels.view(-1, 1) == labels.view(1, -1)  # [B, B]
-
-        # pos_mask = label_mask.float()
-        # # neg_mask = (~label_mask).float()
-
-        # # Count positives per sample
-        # pos_counts = pos_mask.sum(dim=1, keepdim=True)  # [B, 1]
-
-        # # Avoid divide-by-zero and use fallback
-        # has_pos = (pos_counts > 0).float()
-        # no_pos = 1.0 - has_pos
-
-        # # Soft targets for samples with positives
-        # pos_probs = pos_mask / pos_counts.clamp(min=1.0)
-
-        # # Fallback: NT-Xent (sample treated as having self as only positive)
-        # fallback_probs = F.one_hot(torch.arange(len(labels), device=device), num_classes=len(labels)).float()
-
-        # # Final target distribution
-        # target_probs = has_pos * pos_probs + no_pos * fallback_probs
-
-        # log_probs = F.log_softmax(logits, dim=1)
-        # loss = -torch.sum(target_probs * log_probs, dim=1).mean()
-
-        # # This is to compute the minimum loss value possible in each batch (depends on the labels).
-        # # min_loss = torch.sum(target_probs * -torch.log(target_probs.clamp(min=1e-9)), dim=1).mean()
-
-        # return loss
-
-
         device = feats.device
         feats = F.normalize(feats, dim=-1)
         logits = torch.matmul(feats, feats.T) / self.temperature  # [B, B]
 
-        # Exclude self-similarity from positive mask
-        same_label = labels.view(-1, 1) == labels.view(1, -1)      # [B, B]
-        not_self = ~torch.eye(len(labels), dtype=torch.bool, device=device)
-        pos_mask = (same_label & not_self).float()
-        neg_mask = (~same_label).float()
+        # Build positive mask (1 if same label, 0 otherwise)
+        label_mask = labels.view(-1, 1) == labels.view(1, -1)  # [B, B]
 
-        # Count actual positives (excluding self)
+        pos_mask = label_mask.float()
+        # neg_mask = (~label_mask).float()
+
+        # Count positives per sample
         pos_counts = pos_mask.sum(dim=1, keepdim=True)  # [B, 1]
 
+        # Avoid divide-by-zero and use fallback
         has_pos = (pos_counts > 0).float()
         no_pos = 1.0 - has_pos
 
-        # Normalize across positives
+        # Soft targets for samples with positives
         pos_probs = pos_mask / pos_counts.clamp(min=1.0)
 
-        # Fallback if no other positives exist
+        # Fallback: NT-Xent (sample treated as having self as only positive)
         fallback_probs = F.one_hot(torch.arange(len(labels), device=device), num_classes=len(labels)).float()
 
-        # Final target
+        # Final target distribution
         target_probs = has_pos * pos_probs + no_pos * fallback_probs
 
-        # Compute log probabilities
         log_probs = F.log_softmax(logits, dim=1)
         loss = -torch.sum(target_probs * log_probs, dim=1).mean()
-        
-        logging.debug(f"Min loss: {torch.sum(target_probs * -torch.log(target_probs.clamp(min=1e-9)), dim=1).mean().item()}")
+
+        # This is to compute the minimum loss value possible in each batch (depends on the labels).
+        # min_loss = torch.sum(target_probs * -torch.log(target_probs.clamp(min=1e-9)), dim=1).mean()
+
         return loss
+
+
+        # device = feats.device
+        # feats = F.normalize(feats, dim=-1)
+        # logits = torch.matmul(feats, feats.T) / self.temperature  # [B, B]
+
+        # # Exclude self-similarity from positive mask
+        # same_label = labels.view(-1, 1) == labels.view(1, -1)      # [B, B]
+        # not_self = ~torch.eye(len(labels), dtype=torch.bool, device=device)
+        # pos_mask = (same_label & not_self).float()
+        # neg_mask = (~same_label).float()
+
+        # # Count actual positives (excluding self)
+        # pos_counts = pos_mask.sum(dim=1, keepdim=True)  # [B, 1]
+
+        # has_pos = (pos_counts > 0).float()
+        # no_pos = 1.0 - has_pos
+
+        # # Normalize across positives
+        # pos_probs = pos_mask / pos_counts.clamp(min=1.0)
+
+        # # Fallback if no other positives exist
+        # fallback_probs = F.one_hot(torch.arange(len(labels), device=device), num_classes=len(labels)).float()
+
+        # # Final target
+        # target_probs = has_pos * pos_probs + no_pos * fallback_probs
+
+        # # Compute log probabilities
+        # log_probs = F.log_softmax(logits, dim=1)
+        # loss = -torch.sum(target_probs * log_probs, dim=1).mean()
+
+        # return loss
 
 
