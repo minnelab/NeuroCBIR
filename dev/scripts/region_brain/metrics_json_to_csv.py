@@ -1,7 +1,8 @@
 import json
 import pandas as pd
-from utils import load_config_from_path
+from dev.utils import load_config_from_path
 import argparse
+from dev.scripts.whole_brain.metrics_json_to_csv import _fill_partition, _fill_project
 
 def main(config):
     # Load JSON file
@@ -27,34 +28,36 @@ def main(config):
                     "top": top,
                     "structure": structure,
                     "all": values[metric],
+                    # partition columns
                     "train": None,
                     "test": None,
+
+                    # project columns
                     "ADNI": None,
                     "OASIS": None,
                     "AIBL": None,
                     "MIRIAD": None,
                     "SLIM": None,
-                }
+                    }
 
-                # Add bias partition info (train/test)
-                for p in eval_data.get("bias", {}).get(top, {}).get("partition", []):
-                    row[p["partition"]] = p[metric]
+                bias_top_data = eval_data.get("bias", {}).get(top, {})
 
-                # Add bias project info
-                for proj in eval_data.get("bias", {}).get(top, {}).get("project", []):
-                    proj_name = proj["project"].upper()
-                    if proj_name == "OASIS3":
-                        proj_name = "OASIS"
-                    row[proj_name] = proj[metric]
+                _fill_partition(row, bias_top_data, metric)
+                _fill_project(row, bias_top_data, metric)
 
                 rows.append(row)
 
     # Convert to DataFrame
     df = pd.DataFrame(rows)
 
-    # Convert all numeric columns from 0–1 to percentage (0–100)
+    # Convert numeric columns from [0,1] → percentage
+    if config.get("as_percentage", True):
+        num_cols = df.select_dtypes(include="number").columns
+        df[num_cols] = (df[num_cols] * 100)
+    
+    # Round numeric columns to n_decimals decimal places
     num_cols = df.select_dtypes(include="number").columns
-    df[num_cols] = (df[num_cols] * 100).round(1)
+    df[num_cols] = df[num_cols].round(config.get("n_decimals", 4))
 
     # Save to CSV
     df.to_csv(config["csv_path"], index=False)

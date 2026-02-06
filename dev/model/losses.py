@@ -23,183 +23,129 @@ class KLDivergenceLoss:
         kl_loss = 0.5 * torch.sum(z_mu.pow(2) + z_sigma.pow(2) - torch.log(z_sigma.pow(2)) - 1, dim=[1, 2, 3, 4])
         return torch.sum(kl_loss) / kl_loss.shape[0]
 
-class MultiPosConLoss(nn.Module):
+class MPRCLoss(nn.Module):
     """
-    Multi-Positive Contrastive Loss with:
-      - hard positives (same identity)
-      - soft positives (high similarity but different identity)
-      - hard negatives (low similarity)
-    Percentile-based selection is performed per anchor.
+    Multi-Positive Ranking Contrastive Loss (MPRCL)
+
+    Implements:
+    - Hard-positive attraction (L_hp)
+    - Soft-negative ranking loss (L_sn)
+    - Hard-negative ranking loss (L_hn)
+
+    Aligns with NeuroCBIR manuscript notation.
     """
 
     def __init__(
         self,
-        lambda_id: float = 0.2,
-        lambda_soft: float = 0.1,
-        m_id: float = 0.2,
-        m_soft: float = 0.2,
-        lower_perc: float = 0.8,
-        upper_perc: float = 0.8,
+        lambda_sn: float = 0.2,   # Weight for soft-negative ranking
+        lambda_hn: float = 0.1,   # Weight for hard-negative ranking
+        alpha_sn: float = 0.2,    # Soft-negative margin scaling
+        alpha_hn: float = 0.2,    # Hard-negative margin scaling
+        lower_perc: float = 0.05,  # Percentile threshold for hard negatives
+        upper_perc: float = 0.95,  # Percentile threshold for soft negatives
     ):
-        """
-        Parameters
-        ----------
-        lambda_id : float
-            Weight of the identity-based ranking loss.
-
-        lambda_soft : float
-            Weight of the soft-positive vs negative ranking loss.
-
-        m_id : float
-            Margin for identity-based ranking constraints
-            (hard positives vs soft positives / negatives).
-
-        m_soft : float
-            Margin enforcing soft positives to be closer than negatives.
-
-        lower_perc : float
-            Percentile threshold (per anchor) for selecting hard negatives.
-            Values below this percentile are treated as negatives.
-
-        upper_perc : float
-            Percentile threshold (per anchor) for selecting soft positives.
-            Values above this percentile are treated as soft positives.
-        """
         super().__init__()
-
-        # loss weighting
-        self.lambda_id = lambda_id
-        self.lambda_soft = lambda_soft
-
-        # margins (relative, later scaled by per-anchor similarity range)
-        self.m_id = m_id
-        self.m_soft = m_soft
-
-        # percentile thresholds for selection
-        self.upper_perc = upper_perc
+        self.lambda_sn = lambda_sn
+        self.lambda_hn = lambda_hn
+        self.alpha_sn = alpha_sn
+        self.alpha_hn = alpha_hn
         self.lower_perc = lower_perc
-        # Basic sanity check (don't silently allow inverted percentiles)
-        if (self.upper_perc is not None) and (self.lower_perc is not None):
-            if self.upper_perc < self.lower_perc:
-                raise ValueError("upper_perc must be >= lower_perc")
+        self.upper_perc = upper_perc
 
-    def forward(self, feats, vae_feats, labels):
+        if upper_perc < lower_perc:
+            raise ValueError("upper_perc must be >= lower_perc")
+
+    def forward(self, feats: Tensor, vae_feats: Tensor, labels: Tensor) -> Tensor:
+        """
+        feats      : embedding vectors z_i (B x N_f)
+        vae_feats  : VAE latent means mu_phi(x_i) (B x N_f)
+        labels     : subject or subject-region identity
+        """
         device = feats.device
         B = feats.size(0)
 
         # -----------------------------
-        # Similarity matrix
+        # Pairwise cosine similarity
         # -----------------------------
         feats = F.normalize(feats, dim=-1)
         sim = torch.matmul(feats, feats.T)
 
+        # Hard positives mask: same label, exclude self
         same_label = labels[:, None] == labels[None, :]
         not_self = ~torch.eye(B, dtype=torch.bool, device=device)
-
         hard_pos_mask = same_label & not_self
         neg_mask = (~same_label) & not_self
 
         # -----------------------------
-        # Soft positives and hard negatives
+        # VAE-based similarity for soft/hard negative mining
         # -----------------------------
         with torch.no_grad():
-            
             # Compute VAE-based similarity
             vae_feats = F.normalize(vae_feats, dim=-1)
             mu_sim = torch.matmul(vae_feats, vae_feats.T).detach().to(torch.float)
 
             # Detach similarity for margin scaling
             sim_detached = sim.detach().clone().to(torch.float)
-
-            # invalidate hard positives and self-similarities
             invalid = same_label | torch.eye(B, dtype=torch.bool, device=device)
-            
-            # Set invalid similarities to NaN for percentile computations
-            # mu_sim[invalid] = float("nan")
-            mu_sim[invalid] = torch.mean(mu_sim)
-            sim_detached[invalid] = torch.mean(sim_detached)
+            mu_sim[invalid] = mu_sim.mean()
+            sim_detached[invalid] = sim_detached.mean()
 
-            # similarity range (valid only)
+            # Similarity range (valid only)
             sim_range = (sim_detached.max(dim=1).values - sim_detached.min(dim=1).values).clamp(min=1e-3)
+            scaled_m_sn = self.alpha_sn * sim_range
+            scaled_m_hn = self.alpha_hn * sim_range
 
-            scaled_m_id   = self.m_id * sim_range
-            scaled_m_soft = self.m_soft * sim_range
+            # Soft negatives: label-negative samples above upper percentile
+            tau_sn = torch.nanquantile(mu_sim, self.upper_perc, dim=1)
+            soft_mask = mu_sim >= tau_sn.unsqueeze(1)
 
-            # soft positives
-            tau_soft = torch.nanquantile(mu_sim, self.upper_perc, dim=1)
-            soft_mask = mu_sim >= tau_soft.unsqueeze(1)
+            # Hard negatives: label-negative samples below lower percentile
+            tau_hn = torch.nanquantile(mu_sim, self.lower_perc, dim=1)
+            neg_mask &= mu_sim < tau_hn.unsqueeze(1)
 
-            # hard negatives
-            if self.lower_perc is not None:
-                tau_neg = torch.nanquantile(mu_sim, self.lower_perc, dim=1)
-                neg_mask &= mu_sim < tau_neg.unsqueeze(1)
-
-            # guard empty rows
+            # Guard empty rows
             has_valid = ~torch.isnan(mu_sim).all(dim=1)
             soft_mask &= has_valid[:, None]
-            neg_mask  &= has_valid[:, None]
-            
+            neg_mask &= has_valid[:, None]
+
         # -----------------------------
-        # Identity ranking loss
+        # Hard-positive attraction (L_hp)
         # -----------------------------
         pos_inf = torch.finfo(sim.dtype).max
-        neg_inf = torch.finfo(sim.dtype).min
-
-        # hard positives min
         hard_sim = sim.masked_fill(~hard_pos_mask, pos_inf)
-        hp_min = hard_sim.min(dim=1).values # hard_sim.mean(dim=1) # hard_sim.min(dim=1).values
+        s_hp_min = hard_sim.min(dim=1).values
+        has_hp = hard_pos_mask.any(dim=1)
 
-        # soft positives max
-        soft_sim = sim.masked_fill(~soft_mask, neg_inf)
-        soft_max = soft_sim.max(dim=1).values
-
-        # negatives max
-        neg_sim = sim.masked_fill(~neg_mask, neg_inf)
-        neg_max = neg_sim.max(dim=1).values
-
-        # valid masks
-        has_hard = hard_pos_mask.any(dim=1)
-        has_soft = soft_mask.any(dim=1)
-        has_neg  = neg_mask.any(dim=1)
-
-        loss_hd = torch.zeros_like(hp_min)
-            
-        # hard-positive attraction (inside loss_id)
-        valid_hp = has_hard
-        loss_hd[valid_hp] += (1.0 - hp_min[valid_hp]).pow(2)
-        # # soft-positive attraction (inside loss_id)
-        # loss_id[valid_soft] += F.relu(
-        #     hp_min[valid_soft] - soft_max[valid_soft]
-        # )
+        L_hp = torch.zeros_like(s_hp_min)
+        valid_hp = has_hp
+        L_hp[valid_hp] += (1.0 - s_hp_min[valid_hp]).pow(2)
 
         # -----------------------------
-        # Identity ranking loss
+        # Soft-negative ranking loss (L_sn)
         # -----------------------------
-        
-        loss_id = torch.zeros_like(hp_min)
-        
-        # hard > soft
-        valid_soft = has_hard & has_soft
-        loss_id[valid_soft] += F.relu(
-            scaled_m_id[valid_soft] + soft_max[valid_soft] - hp_min[valid_soft]
-        )
+        soft_sim = sim.masked_fill(~soft_mask, -pos_inf)
+        s_sn_max = soft_sim.max(dim=1).values
+        has_sn = soft_mask.any(dim=1)
 
-        # hard > negative
-        valid_neg = has_hard & has_neg
-        loss_id[valid_neg] += F.relu(
-            scaled_m_id[valid_neg] + neg_max[valid_neg] - hp_min[valid_neg]
-        )
+        L_sn = torch.zeros_like(s_hp_min)
+        valid_sn = has_hp & has_sn
+        L_sn[valid_sn] += F.relu(scaled_m_sn[valid_sn] + s_sn_max[valid_sn] - s_hp_min[valid_sn])
 
         # -----------------------------
-        # Soft > negative loss
+        # Hard-negative ranking loss (L_hn)
         # -----------------------------
-        soft_min = sim.masked_fill(~soft_mask, pos_inf).min(dim=1).values
-        loss_soft = F.relu(scaled_m_soft + neg_max - soft_min)
-        loss_soft = torch.where(has_soft & has_neg, loss_soft, 0)
+        neg_sim = sim.masked_fill(~neg_mask, -pos_inf)
+        s_hn_max = neg_sim.max(dim=1).values
+        has_hn = neg_mask.any(dim=1)
+
+        soft_min = soft_sim.masked_fill(~soft_mask, pos_inf).min(dim=1).values
+        L_hn = torch.zeros_like(s_hp_min)
+        valid_hn = has_hp & has_sn & has_hn
+        L_hn[valid_hn] += F.relu(scaled_m_hn[valid_hn] + s_hn_max[valid_hn] - soft_min[valid_hn])
 
         # -----------------------------
-        # Final loss
+        # Final MPRCL
         # -----------------------------
-        loss = loss_hd.mean() + self.lambda_id * loss_id.mean() + self.lambda_soft * loss_soft.mean()
+        loss = L_hp.mean() + self.lambda_sn * L_sn.mean() + self.lambda_hn * L_hn.mean()
         return loss
 

@@ -14,7 +14,7 @@ from monai.utils import set_determinism
 
 from dev.utils import load_config_from_path
 from dev.model.contrastive_model import ContrastiveModel
-from dev.model.losses import MultiPosConLoss
+from dev.model.losses import MPRCLoss
 from dev.training import AverageLoss
 from dev.preprocessing import EmbBatchedDataset, get_balanced_batch
 
@@ -78,7 +78,7 @@ def main(config):
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"])
     grad_scaler = GradScaler()
     avgloss = AverageLoss()
-    cont_loss_fn = MultiPosConLoss(**config["loss_params"])
+    cont_loss_fn = MPRCLoss(**config["loss_params"])
 
     # Resume trainig
     resume_path = config["resume_path"]

@@ -71,6 +71,9 @@ def prepare_mock_dataset(output_root="data/mock_dataset", image_shape=(1, 64, 64
                         "age": random.randint(20, 90),
                         "partition": random.choice(["train", "val", "test"]),
                         "brain_qc": round(random.random(), 2),
+                        "repet": 1,
+                        "useable": 1,
+                        "mislabel": 0,
                     })
 
                 # Save NPZ batch

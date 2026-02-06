@@ -105,6 +105,7 @@ def main(config):
     # Filter out rows    
     dataset = dataset.query("useable == 1").reset_index(drop=True)
     dataset = dataset.query("mislabel == 0").reset_index(drop=True)
+    dataset = dataset.query("valid_seg == 1").reset_index(drop=True)
     dataset['subject'].replace('', pd.NA, inplace=True)
     dataset = dataset.dropna(subset=['subject']).reset_index(drop=True)
 

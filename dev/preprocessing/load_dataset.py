@@ -182,7 +182,8 @@ def encode_labels(label_list):
     return numeric_labels, label_to_index, index_to_label
 
 
-def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3, group_key="subject", device="cuda"):
+def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3, 
+                       group_key="subject", device="cuda", subset_indices=None):
     """
     Create a batch with group-structured samples, and fill remaining slots randomly (without duplicates).
     
@@ -193,6 +194,7 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
         groups_per_batch: Number of groups to include.
         group_key: Key in dataset.metadata used to group samples (e.g., 'subject').
         device: Device to move tensors to.
+        subset_indices: Optional list of indices to restrict sampling to a subset of the dataset.
 
     Returns:
         Dict with tensors for 'emb', 'guid', 'labels', and any extra metadata fields.
@@ -200,6 +202,9 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
 
     if not isinstance(group_key, list):
         group_key = [group_key]
+        
+    if subset_indices is None:
+        subset_indices = list(range(len(dataset)))
 
     # Prepare metadata
     metadata = dataset.metadata
@@ -211,7 +216,9 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
 
     if not getattr(dataset, 'subject_to_indices', None):
         subject_to_indices = defaultdict(list)
-        for idx, row in metadata.iterrows():
+        # for idx, row in metadata.iterrows():
+        for idx in subset_indices:
+            row = metadata.loc[idx]
             subject_to_indices[row[comb_name]].append(idx)
             dataset.subject_to_indices = subject_to_indices
     else:
@@ -238,12 +245,12 @@ def get_balanced_batch(dataset, batch_size=32, group_size=4, groups_per_batch=3,
     # Fill remaining slots with random (non-repeating) indices
     remaining_slots = batch_size - len(batch_indices)
     if remaining_slots > 0:
-        all_indices = list(set(range(len(dataset))) - batch_indices)
+        all_indices = list(set(subset_indices) - batch_indices)
         extra_indices = random.sample(all_indices, min(remaining_slots, len(all_indices)))
         batch_indices.update(extra_indices)
 
     batch_indices = list(batch_indices)
-
+    
     # Initialize output
     output = {"emb": [], "guid": [], "label": [], "subject": []}
     sample_keys = dataset[0].keys()

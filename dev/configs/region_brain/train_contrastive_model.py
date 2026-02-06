@@ -17,5 +17,13 @@ config.update({
     "n_file_loaded": 10,
     "n_batches_per_file": 1000,
     "lr": 0.0001,
+    "loss_params": {
+        "lambda_sn": 0.2,
+        "lambda_hn": 0.1,
+        "alpha_sn": 0.2,
+        "alpha_hn": 0.2,
+        "lower_perc": 0.05,
+        "upper_perc": 0.95,
+    }
 })
 

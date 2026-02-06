@@ -20,7 +20,7 @@ def compute_for_query(query, r_guid, r_pyramid):
     return query["GUID"], r_guid, val
 
 
-def build_pyramid(img, levels=3):
+def build_pyramid(img, levels=2):
     pyr = [img]
     for _ in range(1, levels):
         img = gaussian_filter(img, sigma=1)
@@ -60,6 +60,16 @@ def ms_ssim(img1, img2, levels=2):
 
 def preprocess(img):
     return zoom(img, 0.5, order=1)
+
+def compute_for_r_image(r_guid, r_pyramid, queries_filtered):
+    results = []
+    for q in queries_filtered:
+        val = np.mean([
+            ssim(a, b, data_range=1.0)
+            for a, b in zip(q["pyramid"], r_pyramid)
+        ])
+        results.append((q["GUID"], r_guid, val))
+    return results
 
 def main(config):
     
@@ -123,7 +133,7 @@ def main(config):
     # Sanity check to ensure there are enough batch files
     logging.info(f"Batch files for queries: {q_batch_files}")
     
-    q_batch_files = q_batch_files
+    # q_batch_files = q_batch_files
 
     logging.info(f"Selected {len(q_batch_files)} batch files for queries.")
     # Get queries
@@ -156,11 +166,11 @@ def main(config):
     res_mssim = {}
     for query in queries:
         q_guid = query["GUID"]
-        res_mssim[q_guid] = {"struct_name": query["struct_name"], "r_guid": [], "ms_ssim": []}
+        res_mssim[q_guid] = {"struct_name": [], "r_guid": [], "ms_ssim": []}
     
     for i, batch_file in enumerate(batch_files):
         # dataset = LookupNPZDataset(metadata, batch_file=batch_file, use_segmentation=False)
-        dataset = SubCorBatDataset(metadata, batch_file=q_batch_file, labels_bb_df=labels_bb_df, n_structs=-1)
+        dataset = SubCorBatDataset(metadata, batch_file=batch_file, labels_bb_df=labels_bb_df, n_structs=-1)
         logging.info(f"Created dataset for batch_file: {batch_file} with {len(dataset)} samples")
         
         for struct_name in config["struct_names"]:
@@ -169,7 +179,7 @@ def main(config):
                 #     continue
                 
             r_data = []
-            for data in tqdm(dataset, total=len(dataset), ncols=100):  # loop over several batches per file
+            for d, data in tqdm(enumerate(dataset), total=len(dataset), ncols=100):  # loop over several batches per file
                 r_sample = data
                 
                 for j in range(len(r_sample["struct_name"])):
@@ -186,38 +196,49 @@ def main(config):
                     
             queries_filtered = [q for q in queries if q["struct_name"] == struct_name]
                 
-            tasks = list(product(queries_filtered, r_data))
-            results = Parallel(n_jobs=config["n_jobs"])(
-                delayed(compute_for_query)(q, r_guid, r_pyramid)
-                for q, (r_guid, r_pyramid) in tqdm(tasks, desc="Processing")
+            # tasks = list(product(queries_filtered, r_data))
+            # results = Parallel(n_jobs=config["n_jobs"])(
+            #     delayed(compute_for_query)(q, r_guid, r_pyramid)
+            #     for q, (r_guid, r_pyramid) in tqdm(tasks, desc="Processing")
+            # )
+
+            results_nested = Parallel(n_jobs=config["n_jobs"])(
+                delayed(compute_for_r_image)(r_guid, r_pyramid, queries_filtered)
+                for r_guid, r_pyramid in tqdm(r_data, desc=f"Processing {struct_name}")
             )
+
+            # Flatten the nested results
+            results = [item for sublist in results_nested for item in sublist]
+
             
             for q_guid, r_guid, val in results:
+                res_mssim[q_guid]["struct_name"].append(struct_name)
                 res_mssim[q_guid]["r_guid"].append(r_guid)
                 res_mssim[q_guid]["ms_ssim"].append(val)
+        
+        # Convert results to a flat table
+        logging.info(f"Saving state!")
+        rows = []
+        for q_guid, values in res_mssim.items():
+            r_guids = values["r_guid"]
+            ms_ssims = values["ms_ssim"]
+            struct_names = values["struct_name"]
+
+            for r_guid, score, struct_name in zip(r_guids, ms_ssims, struct_names):
+                rows.append({
+                    "query_guid": q_guid,
+                    "struct_name": struct_name,
+                    "reference_guid": r_guid,
+                    "ms_ssim": score
+                })
+        df = pd.DataFrame(rows)
+
+        # Save res_mssim to csv
+        output_file = os.path.join(config["output_dir"], config["output_file_name"])
+        df.to_csv(output_file, index=False)
+        logging.info(f"Saved to csv!: {output_file}")
 
     logging.info(f"Computation completed!")
-    
-    # Convert results to a flat table
-    rows = []
-    for q_guid, values in res_mssim.items():
-        r_guids = values["r_guid"]
-        ms_ssims = values["ms_ssim"]
-        struct_names = values["struct_name"]
-
-        for r_guid, score, struct_name in zip(r_guids, ms_ssims, struct_names):
-            rows.append({
-                "query_guid": q_guid,
-                "struct_name": struct_name,
-                "reference_guid": r_guid,
-                "ms_ssim": score
-            })
-    df = pd.DataFrame(rows)
-
-    # Save res_mssim to csv
-    output_file = os.path.join(config["output_dir"], config["output_file_name"])
-    df.to_csv(output_file, index=False)
-    logging.info(f"Saved to csv!: {output_file}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')

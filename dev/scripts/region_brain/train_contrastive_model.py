@@ -1,9 +1,11 @@
 import os
 import json
 import argparse
+import random
 import pandas as pd
 from datetime import datetime
 from tqdm import tqdm
+import numpy as np
 
 import torch
 from torch.amp import autocast, GradScaler
@@ -12,10 +14,12 @@ from monai.networks.nets.autoencoderkl import Encoder
 from monai.utils import set_determinism
 
 from dev.model.contrastive_model import ContrastiveModel
-from dev.model.losses import MultiPosConLoss
+from dev.model.losses import MPRCLoss
 from dev.training import AverageLoss
 from dev.preprocessing import RegionEmbBatchedDataset, get_balanced_batch
 from dev.utils import load_config_from_path
+
+from torch.utils.data import Subset
 
 def save_checkpoint(config, model, optimizer, grad_scaler, total_counter, epoch):
     checkpoint = {
@@ -48,6 +52,13 @@ def main(config):
     metadata = metadata.query("mislabel == 0").reset_index(drop=True)
     metadata['subject'].replace('', pd.NA, inplace=True)
     metadata = metadata.dropna(subset=['subject']).reset_index(drop=True)
+    
+    # Load labels and bounding boxes for cortical/subcortical structures
+    labels_df = pd.read_csv(config["labels_path"])
+    labels_df = labels_df[labels_df["Use"] == 1].reset_index(drop=True)
+    struct_names = labels_df["LabelName"].unique().tolist()
+    print(f"Using {len(struct_names)} structures for training.")
+    print(f"Structures: \n{struct_names}")
 
     # Filter by partition if specified
     partition = config.get("partition", None)
@@ -73,7 +84,7 @@ def main(config):
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
     grad_scaler = GradScaler()
     avgloss = AverageLoss()
-    cont_loss_fn = MultiPosConLoss(**config["loss_params"])
+    cont_loss_fn = MPRCLoss(**config["loss_params"])
 
     # Resume trainig
     resume_path = config["resume_path"]
@@ -92,6 +103,28 @@ def main(config):
     # Load dataset
     batch_files = sorted(metadata["batch_file"].unique())
     dataset = RegionEmbBatchedDataset(metadata, batch_files=batch_files)
+    
+    # 1) structure → indices
+    struct_to_indices = {struct_name: dataset.metadata.index[dataset.metadata["struct_name"] == struct_name].to_numpy() 
+                         for struct_name in struct_names}
+    
+    from collections import defaultdict
+    # 2) structure → subject → indices
+    struct_subject_to_indices = {}
+    struct_eligible_subjects = {}
+
+    group_key = config["group_key"]
+    comb_name = '-'.join(group_key)
+    dataset.metadata[comb_name] = dataset.metadata[group_key].agg('-'.join, axis=1)
+    for struct, indices in struct_to_indices.items():
+        subject_map = defaultdict(list)
+        for idx in indices:
+            subject = dataset.metadata.loc[idx, comb_name]
+            subject_map[subject].append(idx)
+        struct_subject_to_indices[struct] = subject_map
+        struct_eligible_subjects[struct] = [
+            s for s, idxs in subject_map.items() if len(idxs) >= config["group_size"]
+        ]
 
     # Training
     writer = SummaryWriter(log_dir=config["logging_path"])
@@ -106,25 +139,53 @@ def main(config):
 
         for step in progress_bar:
             with autocast(device_type=device, enabled=True):
-                batch = get_balanced_batch(
-                    dataset,
-                    batch_size=config["batch_size"],
-                    group_size=config["group_size"],
-                    groups_per_batch=config["groups_per_batch"],
-                    group_key=config["group_key"],
-                    device=device
-                )
-                embs, labels = batch["emb"], batch["label"]
-                vae_feats, proj_embs = model(embs, return_encoder_output=True)
-                cont_loss = cont_loss_fn(proj_embs, vae_feats, labels)
+                # Sample 10 random struct names per batch
+                # Sample K structures for this optimizer step
+                num_structs_used = 0
+                total_loss = 0.0
 
-            loss = cont_loss
-            grad_scaler.scale(loss).backward()
+                for _ in range(10):
+                    # Pick a structure
+                    struct_name = random.choice(list(struct_to_indices.keys()))
+                    # struct_name = "Left-Lateral-Ventricle"
+                    indices = struct_to_indices[struct_name]
+                    dataset.subject_to_indices = struct_subject_to_indices[struct_name]
+                    dataset.eligible_subjects = struct_eligible_subjects[struct_name]
+
+                    batch = get_balanced_batch(
+                        dataset,
+                        batch_size=config["batch_size"],
+                        group_size=config["group_size"],
+                        groups_per_batch=config["groups_per_batch"],
+                        group_key=config["group_key"],
+                        device=device,
+                        subset_indices=indices  # <-- only samples from this structure
+                    )
+                    embs, labels = batch["emb"], batch["label"]
+                    vae_feats, proj_embs = model(
+                    embs,
+                    return_encoder_output=True
+                    )
+
+                    loss = cont_loss_fn(
+                        proj_embs,
+                        vae_feats,
+                        labels
+                    )
+
+                    total_loss += loss
+                    num_structs_used += 1
+
+            # Normalize to keep gradient scale stable
+            if num_structs_used > 0:
+                total_loss = total_loss / num_structs_used
+
+            grad_scaler.scale(total_loss).backward()
             grad_scaler.step(optimizer)
             grad_scaler.update()
             optimizer.zero_grad(set_to_none=True)
 
-            avgloss.put(os.path.join(config["logging_path"], 'cont_loss'), cont_loss.item())
+            avgloss.put(os.path.join(config["logging_path"], 'cont_loss'), total_loss.item())
 
             if total_counter % 10 == 0:
                 global_step = total_counter // 10
