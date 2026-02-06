@@ -74,6 +74,7 @@ def prepare_mock_dataset(output_root="data/mock_dataset", image_shape=(1, 64, 64
                         "repet": 1,
                         "useable": 1,
                         "mislabel": 0,
+                        "valid_seg": 1,
                     })
 
                 # Save NPZ batch
