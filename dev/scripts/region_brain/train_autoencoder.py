@@ -117,7 +117,7 @@ def main(config):
         # random.shuffle(batch_files)
         for batch_file in batch_files:
             dataset = SubCorBatDataset(metadata, batch_file, labels_bb_df, config["n_structs"])
-            batch_iter = SequentialBatchIterator(dataset, batch_size=config["max_batch_size"] // config["n_structs"], device=config["device"])
+            batch_iter = SequentialBatchIterator(dataset, batch_size=config["n_structs"] // config["max_batch_size"], device=config["device"])
             progress_bar = tqdm(range(len(batch_iter)), total=len(batch_iter), ncols=150)
             progress_bar.set_description(f'Epoch {epoch} - File {os.path.basename(batch_file)}')
 
