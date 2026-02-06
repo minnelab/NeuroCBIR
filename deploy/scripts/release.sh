@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+# Check if a python environment is active
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo "⚠️  WARNING: No active Python environment detected."
+    echo "It's recommended to activate your virtual environment before running this script."
+    read -p "Do you want to continue without an active Python environment? (yes/no) " CONFIRM_ENV
+    if [ "$CONFIRM_ENV" != "yes" ]; then
+        echo "Aborting release."
+        exit 1
+    fi
+fi
+
 # ============================
 # WARNING / CONFIRMATION
 # ============================
