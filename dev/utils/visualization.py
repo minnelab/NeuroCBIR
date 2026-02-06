@@ -1,14 +1,22 @@
 import matplotlib.pyplot as plt
+import torch
 
 def plot_mri_comparison(gt_tensor, recon_tensor, title="MRI Comparison"):
     """
     Plot 3 views (axial, coronal, sagittal) for both ground truth and reconstruction
     gt_tensor, recon_tensor: [C, D, H, W] or [D, H, W]
     """
+    # If tensors have channel dimension, take first channel
     if gt_tensor.ndim == 4:
         gt_tensor = gt_tensor[0]
     if recon_tensor.ndim == 4:
         recon_tensor = recon_tensor[0]
+
+    # Convert to float32 if needed
+    if isinstance(gt_tensor, torch.Tensor):
+        gt_tensor = gt_tensor.float()
+    if isinstance(recon_tensor, torch.Tensor):
+        recon_tensor = recon_tensor.float()
 
     fig, axes = plt.subplots(2, 3, figsize=(12, 6))
     fig.suptitle(title)
@@ -41,4 +49,3 @@ def plot_mri_comparison(gt_tensor, recon_tensor, title="MRI Comparison"):
 
     fig.tight_layout()
     return fig
-

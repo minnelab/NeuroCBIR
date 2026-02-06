@@ -1,5 +1,13 @@
 # NeuroCBIR
 
+![Python 3.13](https://img.shields.io/badge/Python-3.13-blue?logo=python)
+![Docker](https://img.shields.io/badge/Docker-✓-blue?logo=docker)
+![Apptainer](https://img.shields.io/badge/Apptainer-✓-orange)
+![Snakemake](https://img.shields.io/badge/Snakemake-✓-green)
+![PyTorch](https://img.shields.io/badge/PyTorch-✓-red?logo=pytorch)
+![Neuroimaging](https://img.shields.io/badge/Neuroimaging-✓-purple)
+![License](https://img.shields.io/badge/License-Apache%202.0-lightgreen)
+
 *A Public Image Retrieval System for Whole-Brain and Region-Specific MRI*
 
 ## Overview
@@ -140,3 +148,9 @@ Félix Nieto-del-Amor¹, Jingru Fu²¹, J.-Sebastian Muehlboeck², Eric Westman�
 For questions or support, contact **Félix Nieto-del-Amor** at: fenda@kth.se
 
 ---
+
+## License
+
+NeuroCBIR is licensed under the Apache License 2.0. See the [LICENSE](/LICENSE) file for details.
+
+ ---
