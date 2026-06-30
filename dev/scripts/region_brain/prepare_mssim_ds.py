@@ -1,3 +1,7 @@
+'''
+Usage: python -m dev.scripts.region_brain.prepare_mssim_ds
+'''
+
 import os
 from tqdm import main, tqdm
 import pandas as pd
@@ -105,6 +109,17 @@ def main(config):
         labels_bb_df = labels_bb_df[labels_bb_df["LabelName"].isin(config["struct_names"])].reset_index(drop=True)
         logging.info(f"Filtered labels to {len(labels_bb_df)} structures based on struct_names.")
 
+    # Load previously computed MS-SSIM scores if available
+    output_file = os.path.join(config["output_dir"], config.get("output_file_name"))
+    if os.path.exists(output_file):
+        logging.info(f"Loading precomputed MS-SSIM scores from {output_file}")
+        df_existing = pd.read_csv(output_file)
+        existing_pairs = set(zip(df_existing["query_guid"], df_existing["reference_guid"])) 
+        logging.info(f"Loaded {len(existing_pairs)} existing query-reference pairs.")
+    else:
+        logging.info(f"No existing MS-SSIM results found at {output_file}. Starting fresh.")
+        existing_pairs = set()
+
     # Training configuration
     batch_files = sorted(metadata["batch_file"].unique())
     
@@ -132,8 +147,23 @@ def main(config):
 
     # Sanity check to ensure there are enough batch files
     logging.info(f"Batch files for queries: {q_batch_files}")
-    
-    # q_batch_files = q_batch_files
+    for combs, q_batch_file in q_batch_files:
+        logging.info(f"Selected batch_file: {q_batch_file} for combination: {combs}")
+        
+    # Check what combinations are already covered by existing pairs
+    if existing_pairs:
+        existing_query_guids = df_existing["query_guid"].unique()
+        existing_combinations = metadata[metadata["GUID"].isin(existing_query_guids)][bias_columns].drop_duplicates().values.tolist()
+        existing_combinations = set(tuple(row) for row in existing_combinations)
+        logging.info(f"Existing combinations covered by existing pairs: {existing_combinations}")
+        
+        # Filter q_batch_files to only include those that cover combinations not already covered by existing pairs
+        q_batch_files = [item for item in q_batch_files if tuple(item[0]) not in existing_combinations]
+        # Show combinations and their selected batch files
+        for combs, q_batch_file in q_batch_files:
+            logging.info(f"Selected batch_file: {q_batch_file} for combination: {combs}")
+    else:
+        logging.info("No existing pairs found, all combinations will be processed.")
 
     logging.info(f"Selected {len(q_batch_files)} batch files for queries.")
     # Get queries
@@ -215,28 +245,38 @@ def main(config):
                 res_mssim[q_guid]["struct_name"].append(struct_name)
                 res_mssim[q_guid]["r_guid"].append(r_guid)
                 res_mssim[q_guid]["ms_ssim"].append(val)
+                
+    logging.info(f"Computation completed!")
         
-        # Convert results to a flat table
-        logging.info(f"Saving state!")
-        rows = []
-        for q_guid, values in res_mssim.items():
-            r_guids = values["r_guid"]
-            ms_ssims = values["ms_ssim"]
-            struct_names = values["struct_name"]
+    # Convert results to a flat table
+    logging.info(f"Saving state!")
+    rows = []
+    for q_guid, values in res_mssim.items():
+        r_guids = values["r_guid"]
+        ms_ssims = values["ms_ssim"]
+        struct_names = values["struct_name"]
 
-            for r_guid, score, struct_name in zip(r_guids, ms_ssims, struct_names):
-                rows.append({
-                    "query_guid": q_guid,
-                    "struct_name": struct_name,
-                    "reference_guid": r_guid,
-                    "ms_ssim": score
-                })
-        df = pd.DataFrame(rows)
+        for r_guid, score, struct_name in zip(r_guids, ms_ssims, struct_names):
+            rows.append({
+                "query_guid": q_guid,
+                "struct_name": struct_name,
+                "reference_guid": r_guid,
+                "ms_ssim": score
+            })
+    df = pd.DataFrame(rows)
+    
+    # If existing results exist, append new results and remove duplicates
+    if existing_pairs:
+        df_existing = pd.read_csv(output_file)
+        df_combined = pd.concat([df_existing, df], ignore_index=True)
+        df_combined.drop_duplicates(subset=["query_guid", "reference_guid", "struct_name"], inplace=True)
+        df = df_combined
+        logging.info(f"Appended new results to existing results. Total unique pairs: {len(df)}")
 
-        # Save res_mssim to csv
-        output_file = os.path.join(config["output_dir"], config["output_file_name"])
-        df.to_csv(output_file, index=False)
-        logging.info(f"Saved to csv!: {output_file}")
+    # Save res_mssim to csv
+    output_file = os.path.join(config["output_dir"], config["output_file_name"])
+    df.to_csv(output_file, index=False)
+    logging.info(f"Saved to csv!: {output_file}")
 
     logging.info(f"Computation completed!")
 

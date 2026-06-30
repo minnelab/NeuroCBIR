@@ -219,7 +219,7 @@ def main(config):
             plt.close()
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO) # DEBUG or INFO
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True, help='Path to the config .py file')
     args = parser.parse_args()

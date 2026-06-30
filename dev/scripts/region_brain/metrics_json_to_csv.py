@@ -30,6 +30,7 @@ def main(config):
                     "all": values[metric],
                     # partition columns
                     "train": None,
+                    "val": None,
                     "test": None,
 
                     # project columns

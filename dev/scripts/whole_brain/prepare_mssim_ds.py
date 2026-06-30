@@ -1,3 +1,7 @@
+'''
+Usage: python -m dev.scripts.whole_brain.prepare_mssim_ds
+'''
+
 import os
 from tqdm import main, tqdm
 from datetime import datetime
@@ -85,6 +89,17 @@ def main(config):
     logging.info(f"METADATA: Remaining rows: {len(metadata)}") # Check result
     logging.debug(f"METADATA columns: {metadata.columns}") 
     logging.debug(f"METADATA head: {metadata.head()}") 
+    
+    # Load previously computed MS-SSIM if exists
+    output_file = os.path.join(config["output_dir"], config["output_file_name"])
+    if os.path.exists(output_file):
+        logging.info(f"Found existing MS-SSIM results at {output_file}. Loading...")
+        df_existing = pd.read_csv(output_file)
+        existing_pairs = set(zip(df_existing["query_guid"], df_existing["reference_guid"]))
+        logging.info(f"Loaded {len(existing_pairs)} existing query-reference pairs.")
+    else:
+        logging.info(f"No existing MS-SSIM results found at {output_file}. Starting fresh.")
+        existing_pairs = set()
 
     # Training configuration
     batch_files = sorted(metadata["batch_file"].unique())
@@ -111,8 +126,22 @@ def main(config):
             else:
                 logging.debug(f"    ✗ Insufficient samples for combination: {combs} in batch_file: {batch_file}")
 
-    # Sanity check to ensure there are enough batch files
-    logging.info(f"Batch files for queries: {q_batch_files}")
+    # Show combinations and their selected batch files
+    for combs, q_batch_file in q_batch_files:
+        logging.info(f"Selected batch_file: {q_batch_file} for combination: {combs}")
+    
+    # Check what combinations are already covered by existing pairs
+    if existing_pairs:
+        existing_query_guids = df_existing["query_guid"].unique()
+        existing_combinations = metadata[metadata["GUID"].isin(existing_query_guids)][bias_columns].drop_duplicates().values.tolist()
+        existing_combinations = set(tuple(row) for row in existing_combinations)
+        logging.info(f"Existing combinations covered by existing pairs: {existing_combinations}")
+        
+        # Filter q_batch_files to only include those that cover combinations not already covered by existing pairs
+        q_batch_files = [item for item in q_batch_files if tuple(item[0]) not in existing_combinations]
+        # Show combinations and their selected batch files
+        for combs, q_batch_file in q_batch_files:
+            logging.info(f"Selected batch_file: {q_batch_file} for combination: {combs}")
 
     logging.info(f"Selected {len(q_batch_files)} batch files for queries.")
     # Get queries
@@ -177,6 +206,14 @@ def main(config):
                 "ms_ssim": score
             })
     df = pd.DataFrame(rows)
+    
+    # If existing results exist, append new results and remove duplicates
+    if existing_pairs:
+        df_existing = pd.read_csv(output_file)
+        df_combined = pd.concat([df_existing, df], ignore_index=True)
+        df_combined.drop_duplicates(subset=["query_guid", "reference_guid"], inplace=True)
+        df = df_combined
+        logging.info(f"Appended new results to existing results. Total unique pairs: {len(df)}")
 
     # Save res_mssim to csv
     output_file = os.path.join(config["output_dir"], config["output_file_name"])
@@ -196,7 +233,7 @@ if __name__ == "__main__":
         "metadata_file_name": "combined_metadata.csv",
         "n_queries": 30,
         "n_jobs": -1,
-        "output_file_name": "ms_ssim_sample2.csv",
+        "output_file_name": "ms_ssim_sample.csv",
         "bias_columns": [
             "partition",
             "project",

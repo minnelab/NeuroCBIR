@@ -71,6 +71,7 @@ def main(config):
 
                 # partition columns
                 "train": None,
+                "val": None,
                 "test": None,
 
                 # project columns
