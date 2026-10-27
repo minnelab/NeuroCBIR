@@ -48,11 +48,20 @@ def main(config):
     )
     raw_embs_np = dataset.embs
     all_guids = dataset.guids
+    
+    # Print shape of the raw embeddings
+    print(f"Raw embeddings shape: {raw_embs_np.shape}")
 
-    # Flatten embeddings to [N, D]
+    # Global average pooling over the spatial dimensions
+    # Input:  [N, 8, 20, 22, 26]
+    # Output: [N, 8]
+    raw_embs_np = raw_embs_np.mean(axis=(1))
+
+    print(f"Embedding matrix shape after global average pooling: {raw_embs_np.shape}")
+    
+    # Flatten spatial dimensions
     raw_embs_np = raw_embs_np.reshape(raw_embs_np.shape[0], -1)
-
-    print(f"Embedding matrix shape: {raw_embs_np.shape}")
+    print(f"Embedding matrix shape after flattening: {raw_embs_np.shape}")
 
     # Create DataFrame and preserve GUID as the first column
     df_embs = pd.DataFrame(raw_embs_np)
